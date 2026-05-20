@@ -1,9 +1,12 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/expense.dart';
 import '../providers/expense_provider.dart';
+import '../services/api_service.dart';
 import '../utils/constants.dart';
 import '../utils/validators.dart';
 import '../widgets/category_chip.dart';
@@ -31,6 +34,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _amountController = TextEditingController();
   final _locationController = TextEditingController();
   final _noteController = TextEditingController();
+
+  final _picker = ImagePicker();
+  XFile? _selectedImage;
+  Uint8List? _imageBytes;
+  bool _isUploadingImage = false;
 
   bool _isEditing = false;
   Expense? _existingExpense;
@@ -60,6 +68,37 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         _locationController.text = _existingExpense!.location ?? '';
         _noteController.text = _existingExpense!.note ?? '';
       });
+    }
+  }
+
+  String _getFullPhotoUrl(String photoUrl) {
+    if (photoUrl.isEmpty) return '';
+    if (photoUrl.startsWith('http')) return photoUrl;
+    final serverBase = Constants.baseUrl.replaceAll('/api', '');
+    return '$serverBase$photoUrl';
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final pickedFile = await _picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+      if (pickedFile != null) {
+        final bytes = await pickedFile.readAsBytes();
+        setState(() {
+          _selectedImage = pickedFile;
+          _imageBytes = bytes;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick image: $e')),
+        );
+      }
     }
   }
 
@@ -97,6 +136,33 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   void _saveExpense() async {
     if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isUploadingImage = true;
+      });
+
+      String? photoUrl = _existingExpense?.photoUrl;
+
+      // If a new image was picked, upload it first
+      if (_selectedImage != null && _imageBytes != null) {
+        try {
+          final apiService = ref.read(apiServiceProvider);
+          photoUrl = await apiService.uploadReceipt(
+            _imageBytes!,
+            _selectedImage!.name,
+          );
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to upload receipt: $e')),
+            );
+          }
+          setState(() {
+            _isUploadingImage = false;
+          });
+          return;
+        }
+      }
+
       final expense = Expense(
         id: _existingExpense?.id,
         amount: double.parse(_amountController.text),
@@ -107,6 +173,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         isSelfReceipt: _isSelfReceipt,
         paymentMethod: _selectedPaymentMethod,
         location: _locationController.text.isNotEmpty ? _locationController.text : null,
+        photoUrl: photoUrl,
         userId: _existingExpense?.userId,
       );
 
@@ -124,6 +191,12 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         }
       } catch (e) {
         // Error is handled by provider and shown in list view
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isUploadingImage = false;
+          });
+        }
       }
     }
   }
@@ -252,15 +325,83 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildAttachButton(Icons.camera_alt, 'TAKE\nPHOTO'),
-                  _buildAttachButton(Icons.image, 'PICK\nPHOTO'),
-                  _buildAttachButton(Icons.picture_as_pdf, 'PICK\nPDF'),
+                  _buildAttachButton(Icons.camera_alt, 'TAKE\nPHOTO', () => _pickImage(ImageSource.camera)),
+                  _buildAttachButton(Icons.image, 'PICK\nPHOTO', () => _pickImage(ImageSource.gallery)),
+                  _buildAttachButton(Icons.picture_as_pdf, 'PICK\nPDF', () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Only image attachments are currently supported')),
+                    );
+                  }),
                 ],
               ),
+              if (_selectedImage != null && _imageBytes != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16.0),
+                  child: Stack(
+                    alignment: Alignment.topRight,
+                    children: [
+                      Container(
+                        height: 200,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.memory(
+                            _imageBytes!,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+                        onPressed: () => setState(() {
+                          _selectedImage = null;
+                          _imageBytes = null;
+                        }),
+                      ),
+                    ],
+                  ),
+                )
+              else if (_existingExpense?.photoUrl != null && _existingExpense!.photoUrl!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16.0),
+                  child: Stack(
+                    alignment: Alignment.topRight,
+                    children: [
+                      Container(
+                        height: 200,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            _getFullPhotoUrl(_existingExpense!.photoUrl!),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Center(child: Icon(Icons.image_not_supported, size: 50));
+                            },
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red, size: 30),
+                        onPressed: () => setState(() {
+                          _existingExpense = _existingExpense!.copyWith(photoUrl: '');
+                        }),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 32),
               ElevatedButton(
-                onPressed: isLoading ? null : _saveExpense,
-                child: isLoading
+                onPressed: (isLoading || _isUploadingImage) ? null : _saveExpense,
+                child: (isLoading || _isUploadingImage)
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white))
                     : const Text('SAVE', style: TextStyle(fontSize: 16)),
               ),
@@ -272,15 +413,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
   }
 
-  Widget _buildAttachButton(IconData icon, String label) {
+  Widget _buildAttachButton(IconData icon, String label, VoidCallback onPressed) {
     return Column(
       children: [
         IconButton(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Attachment mock UI')),
-            );
-          },
+          onPressed: onPressed,
           icon: Icon(icon, size: 32, color: AppTheme.primaryColor),
         ),
         Text(

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/api_service.dart';
+import '../utils/currency_converter.dart';
 
 class DashboardState {
   final Map<String, double> balances;
@@ -8,7 +9,7 @@ class DashboardState {
   final String? error;
 
   DashboardState({
-    this.balances = const {'USD': 0, 'CDF': 0, 'TZS': 0, 'UGX': 0},
+    this.balances = const {'USD': 0, 'TZS': 0, 'KES': 0},
     this.selfReceiptPercentage = 0.0,
     this.isLoading = false,
     this.error,
@@ -37,6 +38,9 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   Future<void> fetchDashboardData() async {
     state = state.copyWith(isLoading: true);
     try {
+      final rates = await _apiService.getRates();
+      CurrencyConverter.updateRates(rates);
+
       final balances = await _apiService.getBalance();
       final percentage = await _apiService.getSelfReceiptPercentage();
       

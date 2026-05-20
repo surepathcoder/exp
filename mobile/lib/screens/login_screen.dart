@@ -14,21 +14,28 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
     _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
   void _login() {
     if (_formKey.currentState!.validate()) {
-      ref.read(authProvider.notifier).login(_emailController.text.trim());
+      ref.read(authProvider.notifier).login(
+            _emailController.text.trim(),
+            _passwordController.text.trim(),
+          );
     }
   }
 
-  void _fillDemo(String email) {
+  void _fillDemo(String email, {String password = 'password'}) {
     _emailController.text = email;
+    _passwordController.text = password;
     _login();
   }
 
@@ -58,12 +65,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(
-                    Icons.account_balance_wallet,
-                    size: 80,
-                    color: AppTheme.primaryColor,
+                  Image.asset(
+                    'assets/images/logo.png',
+                    height: 120,
+                    fit: BoxFit.contain,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   const Text(
                     'Awoken The Nations Ministries',
                     textAlign: TextAlign.center,
@@ -91,6 +98,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: Validators.email,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _passwordController,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: const Icon(Icons.lock),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
+                    ),
+                    obscureText: _obscurePassword,
+                    validator: Validators.password,
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(

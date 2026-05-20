@@ -54,10 +54,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> login(String email) async {
+  Future<void> login(String email, String password) async {
     state = state.copyWith(isLoading: true);
     try {
-      final response = await _apiService.login(email);
+      final response = await _apiService.login(email, password);
       final token = response['token']['access_token'];
       final user = User.fromJson(response['user']);
       

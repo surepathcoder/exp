@@ -9,6 +9,10 @@ import '../theme/app_theme.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/expense_card.dart';
 import '../utils/currency_converter.dart';
+import '../widgets/add_income_dialog.dart';
+import '../widgets/add_transfer_dialog.dart';
+import '../widgets/currency_exchange_dialog.dart';
+import '../widgets/notification_bell.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -52,6 +56,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
+          const NotificationBell(),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -84,7 +89,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   child: Column(
                     children: [
                       const Text(
-                        'Total Balance (USD)',
+                        'Net Balance (USD)',
                         style: TextStyle(color: Colors.white70, fontSize: 16),
                       ),
                       const SizedBox(height: 8),
@@ -105,15 +110,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 children: [
                   Expanded(child: _buildBalanceCard('USD', dashboardState.balances['USD'] ?? 0)),
                   const SizedBox(width: 8),
-                  Expanded(child: _buildBalanceCard('CDF', dashboardState.balances['CDF'] ?? 0)),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
                   Expanded(child: _buildBalanceCard('TZS', dashboardState.balances['TZS'] ?? 0)),
                   const SizedBox(width: 8),
-                  Expanded(child: _buildBalanceCard('UGX', dashboardState.balances['UGX'] ?? 0)),
+                  Expanded(child: _buildBalanceCard('KES', dashboardState.balances['KES'] ?? 0)),
                 ],
               ),
               const SizedBox(height: 16),
@@ -144,9 +143,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildActionButton(Icons.add, 'NEW\nEXPENSE', () => context.go('/expenses/add')),
-                  _buildActionButton(Icons.currency_exchange, 'CURRENCY\nEXCH.', () {}),
-                  _buildActionButton(Icons.arrow_downward, 'NEW\nINCOME', () {}),
-                  _buildActionButton(Icons.swap_horiz, 'NEW\nTRANSFER', () {}),
+                  _buildActionButton(Icons.currency_exchange, 'CURRENCY\nEXCH.', () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => const CurrencyExchangeDialog(),
+                    );
+                  }),
+                  _buildActionButton(Icons.arrow_downward, 'NEW\nINCOME', () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => const AddIncomeDialog(),
+                    );
+                  }),
+                  _buildActionButton(Icons.swap_horiz, 'NEW\nTRANSFER', () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => const AddTransferDialog(),
+                    );
+                  }),
                 ],
               ),
               const SizedBox(height: 24),

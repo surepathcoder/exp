@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/constants.dart';
 import '../models/user.dart';
 import '../models/expense.dart';
+import '../models/income.dart';
+import '../models/transfer.dart';
+import '../models/notification.dart';
 import 'storage_service.dart';
 
 class ApiService {
@@ -27,9 +30,12 @@ class ApiService {
   }
 
   // Auth
-  Future<Map<String, dynamic>> login(String email) async {
+  Future<Map<String, dynamic>> login(String email, String password) async {
     try {
-      final response = await _dio.post('/auth/login', data: {'email': email});
+      final response = await _dio.post('/auth/login', data: {
+        'email': email,
+        'password': password,
+      });
       return response.data;
     } catch (e) {
       throw _handleError(e);
@@ -75,6 +81,18 @@ class ApiService {
     }
   }
 
+  Future<String> uploadReceipt(List<int> bytes, String fileName) async {
+    try {
+      final formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(bytes, filename: fileName),
+      });
+      final response = await _dio.post('/expenses/upload-receipt', data: formData);
+      return response.data['photo_url'];
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   Future<Expense> updateExpense(int id, Expense expense) async {
     try {
       final response = await _dio.put('/expenses/$id', data: expense.toJson());
@@ -87,6 +105,98 @@ class ApiService {
   Future<void> deleteExpense(int id) async {
     try {
       await _dio.delete('/expenses/$id');
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Incomes
+  Future<List<Income>> getIncomes({
+    String? startDate,
+    String? endDate,
+    String? source,
+    int? userId,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (startDate != null) queryParams['start_date'] = startDate;
+      if (endDate != null) queryParams['end_date'] = endDate;
+      if (source != null) queryParams['source'] = source;
+      if (userId != null) queryParams['user_id'] = userId;
+
+      final response = await _dio.get('/incomes', queryParameters: queryParams);
+      return (response.data as List).map((e) => Income.fromJson(e)).toList();
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<Income> createIncome(Income income) async {
+    try {
+      final response = await _dio.post('/incomes', data: income.toJson());
+      return Income.fromJson(response.data);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<Income> updateIncome(int id, Income income) async {
+    try {
+      final response = await _dio.put('/incomes/$id', data: income.toJson());
+      return Income.fromJson(response.data);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<void> deleteIncome(int id) async {
+    try {
+      await _dio.delete('/incomes/$id');
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Transfers
+  Future<List<Transfer>> getTransfers({
+    String? startDate,
+    String? endDate,
+    int? userId,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (startDate != null) queryParams['start_date'] = startDate;
+      if (endDate != null) queryParams['end_date'] = endDate;
+      if (userId != null) queryParams['user_id'] = userId;
+
+      final response = await _dio.get('/transfers', queryParameters: queryParams);
+      return (response.data as List).map((e) => Transfer.fromJson(e)).toList();
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<Transfer> createTransfer(Transfer transfer) async {
+    try {
+      final response = await _dio.post('/transfers', data: transfer.toJson());
+      return Transfer.fromJson(response.data);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<Transfer> updateTransfer(int id, Transfer transfer) async {
+    try {
+      final response = await _dio.put('/transfers/$id', data: transfer.toJson());
+      return Transfer.fromJson(response.data);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<void> deleteTransfer(int id) async {
+    try {
+      await _dio.delete('/transfers/$id');
     } catch (e) {
       throw _handleError(e);
     }
@@ -120,6 +230,15 @@ class ApiService {
   }
 
   // Dashboard
+  Future<Map<String, double>> getRates() async {
+    try {
+      final response = await _dio.get('/dashboard/rates');
+      return Map<String, double>.from(response.data.map((k, v) => MapEntry(k, (v as num).toDouble())));
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   Future<Map<String, double>> getBalance() async {
     try {
       final response = await _dio.get('/dashboard/balance');
@@ -133,6 +252,72 @@ class ApiService {
     try {
       final response = await _dio.get('/dashboard/self-receipt-percentage');
       return (response.data['percentage'] as num).toDouble();
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Notifications API
+  Future<List<AppNotification>> getNotifications({
+    bool? isRead,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'limit': limit,
+        'offset': offset,
+      };
+      if (isRead != null) {
+        queryParams['is_read'] = isRead;
+      }
+      final response = await _dio.get('/notifications', queryParameters: queryParams);
+      return (response.data as List)
+          .map((json) => AppNotification.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<int> getUnreadCount() async {
+    try {
+      final response = await _dio.get('/notifications/unread-count');
+      return response.data['count'] as int;
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<void> markAsRead({int? notificationId}) async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (notificationId != null) {
+        queryParams['notification_id'] = notificationId;
+      }
+      await _dio.put('/notifications/read', queryParameters: queryParams);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<void> sendAdminBroadcast({
+    required String title,
+    required String message,
+    String type = 'info',
+    String priority = 'normal',
+    int? targetUserId,
+    bool isBroadcast = false,
+  }) async {
+    try {
+      await _dio.post('/admin/notifications', data: {
+        'title': title,
+        'message': message,
+        'type': type,
+        'priority': priority,
+        'target_user_id': targetUserId,
+        'is_broadcast': isBroadcast,
+      });
     } catch (e) {
       throw _handleError(e);
     }

@@ -26,6 +26,9 @@ services:
       - ACCESS_TOKEN_EXPIRE_MINUTES=1440 # 24 hours
     depends_on:
       - postgres
+    volumes:
+      - ./backend:/app
+      - backend_uploads:/app/uploads
     restart: always
     command: >
       sh -c "alembic upgrade head &&
@@ -43,3 +46,4 @@ services:
 
 volumes:
   postgres_data:
+  backend_uploads:

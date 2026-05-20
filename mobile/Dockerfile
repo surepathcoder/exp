@@ -2,7 +2,7 @@
 FROM runatlantis/atlantis:latest AS build
 # Note: typically we use a flutter image, but since we don't have an official one that's universally small, we use a community one or install flutter.
 # For simplicity, let's use ghcr.io/cirruslabs/flutter:3.16.5
-FROM ghcr.io/cirruslabs/flutter:3.16.5 AS build-env
+FROM ghcr.io/cirruslabs/flutter:stable AS build-env
 
 WORKDIR /app
 COPY . .

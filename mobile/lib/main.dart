@@ -8,7 +8,10 @@ import 'screens/expenses_screen.dart';
 import 'screens/add_expense_screen.dart';
 import 'screens/users_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/notifications_screen.dart';
+import 'screens/settings/settings_screen.dart';
 import 'providers/auth_provider.dart';
+import 'providers/unread_notification_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,12 +63,20 @@ final routerProvider = Provider<GoRouter>((ref) {
             ]
           ),
           GoRoute(
+            path: '/notifications',
+            builder: (context, state) => const NotificationsScreen(),
+          ),
+          GoRoute(
             path: '/users',
             builder: (context, state) => const UsersScreen(),
           ),
           GoRoute(
             path: '/profile',
             builder: (context, state) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: '/settings',
+            builder: (context, state) => const SettingsScreen(),
           ),
         ],
       ),
@@ -111,6 +122,19 @@ class ScaffoldWithBottomNavBar extends ConsumerWidget {
         items: [
           const BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
           const BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Expenses'),
+          BottomNavigationBarItem(
+            icon: Consumer(
+              builder: (context, ref, _) {
+                final unreadCount = ref.watch(unreadNotificationProvider);
+                return Badge(
+                  isLabelVisible: unreadCount > 0,
+                  label: Text(unreadCount > 99 ? '99+' : '$unreadCount'),
+                  child: const Icon(Icons.notifications_none),
+                );
+              },
+            ),
+            label: 'Notifications',
+          ),
           if (showUsersTab)
             const BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Users'),
           const BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
@@ -123,11 +147,12 @@ class ScaffoldWithBottomNavBar extends ConsumerWidget {
     final location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/dashboard')) return 0;
     if (location.startsWith('/expenses')) return 1;
+    if (location.startsWith('/notifications')) return 2;
     if (showUsersTab) {
-      if (location.startsWith('/users')) return 2;
-      if (location.startsWith('/profile')) return 3;
+      if (location.startsWith('/users')) return 3;
+      if (location.startsWith('/profile')) return 4;
     } else {
-      if (location.startsWith('/profile')) return 2;
+      if (location.startsWith('/profile')) return 3;
     }
     return 0;
   }
@@ -141,13 +166,16 @@ class ScaffoldWithBottomNavBar extends ConsumerWidget {
         context.go('/expenses');
         break;
       case 2:
+        context.go('/notifications');
+        break;
+      case 3:
         if (showUsersTab) {
           context.go('/users');
         } else {
           context.go('/profile');
         }
         break;
-      case 3:
+      case 4:
         if (showUsersTab) {
           context.go('/profile');
         }

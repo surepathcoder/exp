@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -68,7 +69,9 @@ class ProfileScreen extends ConsumerWidget {
               leading: const Icon(Icons.settings),
               title: const Text('Settings'),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () {},
+              onTap: () {
+                context.push('/settings');
+              },
             ),
             ListTile(
               leading: const Icon(Icons.help_outline),

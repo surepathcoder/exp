@@ -54,7 +54,7 @@ The application will be available at:
 ## Features
 
 - **Role-based Access Control**: SuperAdmin, Admin, and User roles.
-- **Multi-currency Support**: Track balances in USD, CDF, TZS, and UGX.
+- **Multi-currency Support**: Track balances in USD, TZS, and KES.
 - **Dashboard**: Overview of balances, self-receipt percentage, and recent transactions.
 - **Expense Management**: Add, edit, delete, and view expenses with filtering options.
 - **User Management**: Admins can view users; SuperAdmins can change user roles.

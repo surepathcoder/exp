@@ -1,12 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
+import uuid
+import os
+import shutil
 
 from app.database import get_db
 from app.schemas import ExpenseCreate, ExpenseResponse, ExpenseBase
 from app.models import Expense, User, RoleEnum
 from app.auth import get_current_user
+from app.utils.notification_helper import create_notification, check_and_trigger_balance_warning
 
 router = APIRouter(prefix="/api/expenses", tags=["expenses"])
 
@@ -21,6 +25,32 @@ CATEGORIES = [
 @router.get("/categories", response_model=List[str])
 def get_categories():
     return CATEGORIES
+
+@router.post("/upload-receipt", response_model=dict)
+def upload_receipt(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file type. Only image files (JPG, PNG, GIF, WEBP) are allowed."
+        )
+    
+    unique_filename = f"{uuid.uuid4()}{file_ext}"
+    file_path = os.path.join("uploads", unique_filename)
+    
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Could not save file: {str(e)}"
+        )
+        
+    return {"photo_url": f"/uploads/{unique_filename}"}
 
 @router.get("", response_model=List[ExpenseResponse])
 def get_expenses(
@@ -51,7 +81,7 @@ def get_expenses(
     return query.order_by(Expense.date.desc()).all()
 
 @router.post("", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
-def create_expense(
+async def create_expense(
     expense_in: ExpenseCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -60,6 +90,18 @@ def create_expense(
     db.add(new_expense)
     db.commit()
     db.refresh(new_expense)
+    
+    await create_notification(
+        db=db,
+        title="New Expense Added",
+        message=f"You added a new expense: {new_expense.category} — {new_expense.amount} {new_expense.currency.value}",
+        type="expense",
+        priority="normal",
+        target_user_id=current_user.id
+    )
+    
+    await check_and_trigger_balance_warning(db, current_user.id, new_expense.currency.value)
+    
     return new_expense
 
 @router.put("/{expense_id}", response_model=ExpenseResponse)

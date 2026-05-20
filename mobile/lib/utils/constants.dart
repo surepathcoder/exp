@@ -1,6 +1,6 @@
 class Constants {
-  // Use http://192.168.1.6:8000/api for local dev, or the provided env variable
-  static const String baseUrl = String.fromEnvironment('API_URL', defaultValue: 'http://192.168.1.6:8000/api');
+  // Use http://127.0.0.1:8000/api for local dev with adb reverse, or the provided env variable
+  static const String baseUrl = String.fromEnvironment('API_URL', defaultValue: 'http://127.0.0.1:8000/api');
   
   static const String tokenKey = 'auth_token';
   static const String userKey = 'user_data';
@@ -13,6 +13,6 @@ class Constants {
     "Appreciation", "Internet/Phone", "Print", "Committees", "Other"
   ];
 
-  static const List<String> currencies = ['USD', 'CDF', 'TZS', 'UGX'];
+  static const List<String> currencies = ['USD', 'TZS', 'KES'];
   static const List<String> paymentMethods = ['Cash', 'Bank', 'Mobile Money'];
 }

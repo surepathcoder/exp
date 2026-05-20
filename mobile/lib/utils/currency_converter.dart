@@ -1,15 +1,22 @@
 class CurrencyConverter {
-  // Conversion rates to USD as specified
-  static const Map<String, double> _ratesToUsd = {
+  // Conversion rates to USD as specified (default fallbacks)
+  static Map<String, double> ratesToUsd = {
     'USD': 1.0,
-    'CDF': 2800.0,
     'TZS': 2500.0,
-    'UGX': 3700.0,
+    'KES': 130.0,
   };
+
+  static void updateRates(Map<String, double> newRates) {
+    newRates.forEach((key, value) {
+      if (ratesToUsd.containsKey(key)) {
+        ratesToUsd[key] = value;
+      }
+    });
+  }
 
   static double convertToUsd(double amount, String currency) {
     if (currency == 'USD') return amount;
-    final rate = _ratesToUsd[currency];
+    final rate = ratesToUsd[currency];
     if (rate == null || rate == 0) return amount; // Fallback
     return amount / rate;
   }

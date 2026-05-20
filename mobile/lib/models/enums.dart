@@ -30,7 +30,6 @@ UserRole roleFromString(String roleStr) {
 
 enum Currency {
   USD,
-  CDF,
   TZS,
-  UGX
+  KES
 }
