@@ -58,10 +58,20 @@ class SettingsApiService {
     }
   }
 
-  Future<AppCategory> createCategory(String name, int sortOrder) async {
+  Future<AppCategory> createCategory(
+    String name,
+    int sortOrder, {
+    String color = '#9E9E9E',
+    String? icon,
+    String type = 'expense',
+  }) async {
     try {
       final r = await _dio.post('/settings/categories', data: {
-        'name': name, 'sort_order': sortOrder,
+        'name': name,
+        'sort_order': sortOrder,
+        'color': color,
+        'icon': icon,
+        'type': type,
       });
       return AppCategory.fromJson(r.data);
     } catch (e) {
@@ -81,6 +91,14 @@ class SettingsApiService {
   Future<void> deleteCategory(int id) async {
     try {
       await _dio.delete('/settings/categories/$id');
+    } catch (e) {
+      throw _err(e);
+    }
+  }
+
+  Future<void> reorderCategories(List<Map<String, dynamic>> items) async {
+    try {
+      await _dio.put('/settings/categories/reorder', data: {'items': items});
     } catch (e) {
       throw _err(e);
     }

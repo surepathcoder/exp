@@ -4,11 +4,15 @@ import 'package:go_router/go_router.dart';
 import '../providers/expense_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
+import '../providers/category_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/expense_card.dart';
+import '../widgets/category_chip.dart';
 import '../utils/constants.dart';
 import '../utils/downloader.dart';
+import '../utils/color_parser.dart';
+import '../utils/category_icons.dart';
 import '../services/api_service.dart';
 
 class ExpensesScreen extends ConsumerStatefulWidget {
@@ -27,6 +31,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     super.initState();
     Future.microtask(() {
       _fetchData();
+      ref.read(categoryProvider.notifier).fetchCategories(all: false);
       final user = ref.read(authProvider).user;
       if (user != null && user.role.name != 'user') {
         ref.read(userProvider.notifier).fetchUsers();
@@ -99,6 +104,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     final expenseState = ref.watch(expenseProvider);
     final user = ref.watch(authProvider).user;
     final userState = ref.watch(userProvider);
+    final categoryState = ref.watch(categoryProvider);
     final isAdmin = user != null && user.role.name != 'user';
 
     ref.listen(expenseProvider, (previous, next) {
@@ -151,34 +157,30 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  FilterChip(
-                    label: const Text('All'),
-                    selected: _selectedCategory == null,
+                  CategoryChip(
+                    label: 'All',
+                    isSelected: _selectedCategory == null,
                     onSelected: (selected) {
                       setState(() => _selectedCategory = null);
                       _fetchData();
                     },
-                    selectedColor: AppTheme.primaryColor,
-                    labelStyle: TextStyle(
-                      color: _selectedCategory == null ? Colors.white : Colors.black87,
-                    ),
                   ),
                   const SizedBox(width: 8),
-                  ...Constants.categories.map((category) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      label: Text(category),
-                      selected: _selectedCategory == category,
-                      onSelected: (selected) {
-                        setState(() => _selectedCategory = selected ? category : null);
-                        _fetchData();
-                      },
-                      selectedColor: AppTheme.primaryColor,
-                      labelStyle: TextStyle(
-                        color: _selectedCategory == category ? Colors.white : Colors.black87,
-                      ),
-                    ),
-                  )),
+                  ...categoryState.categories
+                      .where((cat) => cat.type == 'expense')
+                      .map((category) => Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: CategoryChip(
+                              label: category.name,
+                              icon: CategoryIconHelper.getIcon(category.icon),
+                              color: ColorParser.fromHex(category.color),
+                              isSelected: _selectedCategory == category.name,
+                              onSelected: (selected) {
+                                setState(() => _selectedCategory = selected ? category.name : null);
+                                _fetchData();
+                              },
+                            ),
+                          )),
                 ],
               ),
             ),

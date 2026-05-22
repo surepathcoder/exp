@@ -9,6 +9,10 @@ class CategoryState {
 
   CategoryState({this.categories = const [], this.isLoading = false, this.error});
 
+  Map<String, AppCategory> get categoriesByName => {
+    for (var cat in categories) cat.name: cat
+  };
+
   CategoryState copyWith({
     List<AppCategory>? categories,
     bool? isLoading,
@@ -37,9 +41,15 @@ class CategoryNotifier extends StateNotifier<CategoryState> {
     }
   }
 
-  Future<bool> createCategory(String name, int sortOrder) async {
+  Future<bool> createCategory(
+    String name,
+    int sortOrder, {
+    String color = '#9E9E9E',
+    String? icon,
+    String type = 'expense',
+  }) async {
     try {
-      await _api.createCategory(name, sortOrder);
+      await _api.createCategory(name, sortOrder, color: color, icon: icon, type: type);
       await fetchCategories();
       return true;
     } catch (e) {
@@ -62,6 +72,18 @@ class CategoryNotifier extends StateNotifier<CategoryState> {
   Future<bool> deleteCategory(int id) async {
     try {
       await _api.deleteCategory(id);
+      await fetchCategories();
+      return true;
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> reorderCategories(List<Map<String, dynamic>> items) async {
+    try {
+      await _api.reorderCategories(items);
+      // Wait for fetch to ensure local state has correct db ordering
       await fetchCategories();
       return true;
     } catch (e) {

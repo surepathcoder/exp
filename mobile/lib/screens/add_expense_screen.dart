@@ -12,6 +12,9 @@ import '../utils/validators.dart';
 import '../widgets/category_chip.dart';
 import '../widgets/currency_picker.dart';
 import '../theme/app_theme.dart';
+import '../providers/category_provider.dart';
+import '../utils/color_parser.dart';
+import '../utils/category_icons.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
   final int? expenseId;
@@ -25,7 +28,7 @@ class AddExpenseScreen extends ConsumerStatefulWidget {
 class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
   
-  String _selectedCategory = Constants.categories.first;
+  String _selectedCategory = '';
   String _selectedCurrency = 'USD';
   String _selectedPaymentMethod = 'Cash';
   DateTime _selectedDate = DateTime.now();
@@ -46,6 +49,18 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   @override
   void initState() {
     super.initState();
+    Future.microtask(() {
+      ref.read(categoryProvider.notifier).fetchCategories(all: false).then((_) {
+        final cats = ref.read(categoryProvider).categories
+            .where((c) => c.isActive && c.type == 'expense')
+            .toList();
+        if (cats.isNotEmpty && _selectedCategory.isEmpty) {
+          setState(() {
+            _selectedCategory = cats.first.name;
+          });
+        }
+      });
+    });
     if (widget.expenseId != null) {
       _isEditing = true;
       Future.microtask(_loadExistingExpense);
@@ -250,20 +265,57 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: Constants.categories.map((category) {
-                  return CategoryChip(
-                    label: category,
-                    isSelected: _selectedCategory == category,
-                    onSelected: (selected) {
-                      if (selected) {
-                        setState(() => _selectedCategory = category);
-                      }
-                    },
+              Consumer(
+                builder: (context, ref, child) {
+                  final catsState = ref.watch(categoryProvider);
+                  final expenseCats = catsState.categories
+                      .where((c) => c.isActive && c.type == 'expense')
+                      .toList();
+
+                  if (catsState.isLoading && expenseCats.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Center(child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator())),
+                    );
+                  }
+
+                  if (expenseCats.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Text('No categories available'),
+                    );
+                  }
+
+                  // If selected category is empty, default to first category
+                  if (_selectedCategory.isEmpty) {
+                    Future.microtask(() {
+                      setState(() {
+                        _selectedCategory = expenseCats.first.name;
+                      });
+                    });
+                  }
+
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: expenseCats.map((category) {
+                      final parsedColor = ColorParser.fromHex(category.color);
+                      final iconData = CategoryIconHelper.getIcon(category.icon);
+
+                      return CategoryChip(
+                        label: category.name,
+                        icon: iconData,
+                        color: parsedColor,
+                        isSelected: _selectedCategory == category.name,
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() => _selectedCategory = category.name);
+                          }
+                        },
+                      );
+                    }).toList(),
                   );
-                }).toList(),
+                },
               ),
               const SizedBox(height: 24),
               InkWell(

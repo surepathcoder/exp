@@ -3,13 +3,34 @@ from datetime import datetime, timedelta
 from app.models import User, Expense, RoleEnum, CurrencyEnum, SystemSettings, Category
 from app.auth import get_password_hash
 
-# Default categories matching the original hardcoded constants
-DEFAULT_CATEGORIES = [
-    "Travel", "Worship committee", "Volunteers committee", "Technical committee",
-    "Protocol committee", "Invasion", "Zones", "BOA,ECC,APM", "Youth committee",
-    "Woman committee", "Prayer committee", "Church Mobilization", "Promo",
-    "Food & Drinks", "Accommodation", "Transfer", "Hospitality", "Permits",
-    "Appreciation", "Internet/Phone", "Print", "Committees", "Other",
+DEFAULT_CATEGORIES_DATA = [
+    {"name": "Travel", "color": "#3F51B5", "icon": "flight", "type": "expense"},
+    {"name": "Worship committee", "color": "#E91E63", "icon": "church", "type": "expense"},
+    {"name": "Volunteers committee", "color": "#9C27B0", "icon": "people_outline", "type": "expense"},
+    {"name": "Technical committee", "color": "#673AB7", "icon": "computer", "type": "expense"},
+    {"name": "Protocol committee", "color": "#009688", "icon": "security", "type": "expense"},
+    {"name": "Invasion", "color": "#4CAF50", "icon": "campaign", "type": "expense"},
+    {"name": "Zones", "color": "#8BC34A", "icon": "map", "type": "expense"},
+    {"name": "BOA,ECC,APM", "color": "#CDDC39", "icon": "business_center", "type": "expense"},
+    {"name": "Youth committee", "color": "#FFC107", "icon": "face", "type": "expense"},
+    {"name": "Woman committee", "color": "#FF9800", "icon": "pregnant_woman", "type": "expense"},
+    {"name": "Prayer committee", "color": "#FF5722", "icon": "volunteer_activism", "type": "expense"},
+    {"name": "Church Mobilization", "color": "#795548", "icon": "groups", "type": "expense"},
+    {"name": "Promo", "color": "#9E9E9E", "icon": "campaign", "type": "expense"},
+    {"name": "Food & Drinks", "color": "#FF5722", "icon": "restaurant", "type": "expense"},
+    {"name": "Accommodation", "color": "#00BCD4", "icon": "hotel", "type": "expense"},
+    {"name": "Transfer", "color": "#607D8B", "icon": "swap_horiz", "type": "expense"},
+    {"name": "Hospitality", "color": "#E91E63", "icon": "local_cafe", "type": "expense"},
+    {"name": "Permits", "color": "#3F51B5", "icon": "description", "type": "expense"},
+    {"name": "Appreciation", "color": "#4CAF50", "icon": "card_giftcard", "type": "expense"},
+    {"name": "Internet/Phone", "color": "#9C27B0", "icon": "phone_android", "type": "expense"},
+    {"name": "Print", "color": "#00BCD4", "icon": "print", "type": "expense"},
+    {"name": "Committees", "color": "#673AB7", "icon": "groups", "type": "expense"},
+    {"name": "Other", "color": "#9E9E9E", "icon": "more_horiz", "type": "expense"},
+    {"name": "Salary", "color": "#009688", "icon": "payments", "type": "income"},
+    {"name": "Donations", "color": "#4CAF50", "icon": "volunteer_activism", "type": "income"},
+    {"name": "Grants", "color": "#FF9800", "icon": "monetization_on", "type": "income"},
+    {"name": "Refunds", "color": "#2196F3", "icon": "settings_backup_restore", "type": "income"},
 ]
 
 
@@ -23,13 +44,28 @@ def seed_settings(db: Session):
 
 
 def seed_categories(db: Session):
-    """Seed default categories if none exist."""
-    if db.query(Category).first():
-        return
-    for i, name in enumerate(DEFAULT_CATEGORIES):
-        db.add(Category(name=name, sort_order=i, is_active=True))
+    """Seed default categories or update existing ones with color/icon/type."""
+    for i, data in enumerate(DEFAULT_CATEGORIES_DATA):
+        cat = db.query(Category).filter(Category.name == data["name"]).first()
+        if not cat:
+            db.add(Category(
+                name=data["name"],
+                color=data["color"],
+                icon=data["icon"],
+                type=data["type"],
+                sort_order=i,
+                is_active=True
+            ))
+        else:
+            # Backfill/update default values
+            if cat.color == "#9E9E9E" or not cat.color:
+                cat.color = data["color"]
+            if not cat.icon:
+                cat.icon = data["icon"]
+            if cat.type != data["type"]:
+                cat.type = data["type"]
     db.commit()
-    print(f"  ✓ {len(DEFAULT_CATEGORIES)} categories seeded")
+    print(f"  ✓ {len(DEFAULT_CATEGORIES_DATA)} categories seeded/updated")
 
 
 def seed_users(db: Session):
