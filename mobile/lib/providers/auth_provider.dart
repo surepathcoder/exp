@@ -73,6 +73,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await storageService.clearAll();
     state = AuthState();
   }
+
+  Future<void> register(String name, String email, String password) async {
+    state = state.copyWith(isLoading: true);
+    try {
+      await _apiService.register(name, email, password);
+      state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(error: e.toString(), isLoading: false);
+      rethrow;
+    }
+  }
+
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    state = state.copyWith(isLoading: true);
+    try {
+      await _apiService.changePassword(currentPassword, newPassword);
+      state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(error: e.toString(), isLoading: false);
+      rethrow;
+    }
+  }
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {

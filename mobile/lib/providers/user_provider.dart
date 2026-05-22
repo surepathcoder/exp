@@ -68,6 +68,20 @@ class UserNotifier extends StateNotifier<UserState> {
       rethrow;
     }
   }
+
+  Future<void> updateUserApproval(int userId, bool isApproved) async {
+    state = state.copyWith(isLoading: true);
+    try {
+      final updatedUser = await _apiService.updateUserApproval(userId, isApproved);
+      state = state.copyWith(
+        users: state.users.map((u) => u.id == userId ? updatedUser : u).toList(),
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(error: e.toString(), isLoading: false);
+      rethrow;
+    }
+  }
 }
 
 final userProvider = StateNotifierProvider<UserNotifier, UserState>((ref) {

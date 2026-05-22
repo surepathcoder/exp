@@ -36,7 +36,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   
   final _amountController = TextEditingController();
   final _locationController = TextEditingController();
+  final _vendorController = TextEditingController();
   final _noteController = TextEditingController();
+  final _projectController = TextEditingController(text: 'Operations');
 
   final _picker = ImagePicker();
   XFile? _selectedImage;
@@ -81,6 +83,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         
         _amountController.text = _existingExpense!.amount.toString();
         _locationController.text = _existingExpense!.location ?? '';
+        _vendorController.text = _existingExpense!.vendor ?? '';
+        _projectController.text = _existingExpense!.project ?? 'Operations';
         _noteController.text = _existingExpense!.note ?? '';
       });
     }
@@ -121,7 +125,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   void dispose() {
     _amountController.dispose();
     _locationController.dispose();
+    _vendorController.dispose();
     _noteController.dispose();
+    _projectController.dispose();
     super.dispose();
   }
 
@@ -188,6 +194,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         isSelfReceipt: _isSelfReceipt,
         paymentMethod: _selectedPaymentMethod,
         location: _locationController.text.isNotEmpty ? _locationController.text : null,
+        vendor: _vendorController.text.isNotEmpty ? _vendorController.text : null,
+        project: _projectController.text.trim().isNotEmpty ? _projectController.text.trim() : 'Operations',
         photoUrl: photoUrl,
         userId: _existingExpense?.userId,
       );
@@ -232,17 +240,29 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextFormField(
-                initialValue: 'Operations',
-                readOnly: true,
+                controller: _projectController,
                 decoration: const InputDecoration(
                   labelText: 'Project',
                 ),
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Project is required';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _locationController,
                 decoration: const InputDecoration(
                   labelText: 'Location',
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _vendorController,
+                decoration: const InputDecoration(
+                  labelText: 'Vendor',
                 ),
               ),
               const SizedBox(height: 16),

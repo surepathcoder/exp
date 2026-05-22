@@ -16,6 +16,7 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     id: int
     role: RoleEnum
+    is_approved: bool
     created_at: datetime
 
     class Config:
@@ -31,6 +32,8 @@ class ExpenseBase(BaseModel):
     is_self_receipt: bool = False
     payment_method: Optional[str] = None
     location: Optional[str] = None
+    vendor: Optional[str] = None
+    project: Optional[str] = 'Operations'
     photo_url: Optional[str] = None
 
 

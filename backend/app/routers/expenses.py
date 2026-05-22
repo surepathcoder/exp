@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile, Response
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, and_
 from typing import List, Optional
 from datetime import datetime
 import uuid
@@ -59,8 +60,13 @@ def _get_filtered_expenses_query(
     current_user: User,
     start_date: Optional[datetime],
     end_date: Optional[datetime],
-    category: Optional[str],
-    user_id: Optional[int]
+    categories: Optional[List[str]],
+    user_id: Optional[int],
+    search: Optional[str] = None,
+    min_amount: Optional[float] = None,
+    max_amount: Optional[float] = None,
+    status: Optional[str] = None,
+    project: Optional[List[str]] = None
 ):
     query = db.query(Expense)
     if current_user.role == RoleEnum.user:
@@ -73,8 +79,50 @@ def _get_filtered_expenses_query(
         query = query.filter(Expense.date >= start_date)
     if end_date:
         query = query.filter(Expense.date <= end_date)
-    if category:
-        query = query.filter(Expense.category == category)
+    if categories:
+        query = query.filter(Expense.category.in_(categories))
+    if project:
+        query = query.filter(Expense.project.in_(project))
+    if min_amount is not None:
+        query = query.filter(Expense.amount >= min_amount)
+    if max_amount is not None:
+        query = query.filter(Expense.amount <= max_amount)
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.filter(
+            or_(
+                Expense.note.ilike(search_pattern),
+                Expense.vendor.ilike(search_pattern),
+                Expense.payment_method.ilike(search_pattern),
+                Expense.location.ilike(search_pattern),
+                Expense.category.ilike(search_pattern),
+                Expense.project.ilike(search_pattern)
+            )
+        )
+    if status and status != "all":
+        if status == "has_receipt":
+            query = query.filter(
+                or_(
+                    Expense.is_self_receipt == True,
+                    and_(Expense.photo_url != None, Expense.photo_url != "")
+                )
+            )
+        elif status == "missing_receipt":
+            query = query.filter(
+                and_(
+                    Expense.is_self_receipt == False,
+                    or_(Expense.photo_url == None, Expense.photo_url == "")
+                )
+            )
+        elif status == "self_receipt":
+            query = query.filter(Expense.is_self_receipt == True)
+        elif status == "standard_receipt":
+            query = query.filter(
+                and_(
+                    Expense.is_self_receipt == False,
+                    and_(Expense.photo_url != None, Expense.photo_url != "")
+                )
+            )
         
     return query.order_by(Expense.date.desc())
 
@@ -82,24 +130,40 @@ def _get_filtered_expenses_query(
 def get_expenses(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    category: Optional[str] = None,
+    category: Optional[List[str]] = Query(None),
     user_id: Optional[int] = None,
+    search: Optional[str] = None,
+    min_amount: Optional[float] = None,
+    max_amount: Optional[float] = None,
+    status: Optional[str] = None,
+    project: Optional[List[str]] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = _get_filtered_expenses_query(db, current_user, start_date, end_date, category, user_id)
+    query = _get_filtered_expenses_query(
+        db, current_user, start_date, end_date, category, user_id,
+        search, min_amount, max_amount, status, project
+    )
     return query.all()
 
 @router.get("/export/csv")
 def export_expenses_csv(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    category: Optional[str] = None,
+    category: Optional[List[str]] = Query(None),
     user_id: Optional[int] = None,
+    search: Optional[str] = None,
+    min_amount: Optional[float] = None,
+    max_amount: Optional[float] = None,
+    status: Optional[str] = None,
+    project: Optional[List[str]] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = _get_filtered_expenses_query(db, current_user, start_date, end_date, category, user_id)
+    query = _get_filtered_expenses_query(
+        db, current_user, start_date, end_date, category, user_id,
+        search, min_amount, max_amount, status, project
+    )
     expenses = query.all()
     csv_data = generate_csv(expenses)
     return Response(
@@ -112,12 +176,20 @@ def export_expenses_csv(
 def export_expenses_pdf(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    category: Optional[str] = None,
+    category: Optional[List[str]] = Query(None),
     user_id: Optional[int] = None,
+    search: Optional[str] = None,
+    min_amount: Optional[float] = None,
+    max_amount: Optional[float] = None,
+    status: Optional[str] = None,
+    project: Optional[List[str]] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = _get_filtered_expenses_query(db, current_user, start_date, end_date, category, user_id)
+    query = _get_filtered_expenses_query(
+        db, current_user, start_date, end_date, category, user_id,
+        search, min_amount, max_amount, status, project
+    )
     expenses = query.all()
     
     # Get user descriptor
@@ -140,7 +212,8 @@ def export_expenses_pdf(
         
     filters_desc = {
         "date_range": date_range,
-        "category": category,
+        "category": ", ".join(category) if category else None,
+        "project": ", ".join(project) if project else None,
         "user": user_desc
     }
     

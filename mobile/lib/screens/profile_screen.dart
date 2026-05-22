@@ -80,6 +80,14 @@ class ProfileScreen extends ConsumerWidget {
               onTap: () {},
             ),
             ListTile(
+              leading: const Icon(Icons.lock_outline),
+              title: const Text('Change Password'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                context.push('/change-password');
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.logout, color: AppTheme.errorColor),
               title: const Text('Logout', style: TextStyle(color: AppTheme.errorColor)),
               onTap: () {

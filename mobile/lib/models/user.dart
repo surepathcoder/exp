@@ -6,6 +6,7 @@ class User extends Equatable {
   final String name;
   final String email;
   final UserRole role;
+  final bool isApproved;
   final DateTime createdAt;
 
   const User({
@@ -13,6 +14,7 @@ class User extends Equatable {
     required this.name,
     required this.email,
     required this.role,
+    required this.isApproved,
     required this.createdAt,
   });
 
@@ -22,6 +24,7 @@ class User extends Equatable {
       name: json['name'],
       email: json['email'],
       role: roleFromString(json['role']),
+      isApproved: json['is_approved'] ?? false,
       createdAt: DateTime.parse(json['created_at']),
     );
   }
@@ -32,10 +35,11 @@ class User extends Equatable {
       'name': name,
       'email': email,
       'role': role.name,
+      'is_approved': isApproved,
       'created_at': createdAt.toIso8601String(),
     };
   }
 
   @override
-  List<Object?> get props => [id, name, email, role, createdAt];
+  List<Object?> get props => [id, name, email, role, isApproved, createdAt];
 }

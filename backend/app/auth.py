@@ -19,6 +19,32 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
+def validate_password_strength(password: str) -> Optional[str]:
+    """
+    Validates password strength.
+    Returns an error message if the password doesn't meet the strength criteria, None otherwise.
+    Criteria:
+    - At least 8 characters long
+    - At least one uppercase letter (A-Z)
+    - At least one lowercase letter (a-z)
+    - At least one digit (0-9)
+    - At least one special character (e.g. !@#$%^&*(),.?":{}|<>)
+    """
+    if len(password) < 8:
+        return "Password must be at least 8 characters long."
+    if not any(c.isupper() for c in password):
+        return "Password must contain at least one uppercase letter."
+    if not any(c.islower() for c in password):
+        return "Password must contain at least one lowercase letter."
+    if not any(c.isdigit() for c in password):
+        return "Password must contain at least one digit."
+    
+    special_chars = "!@#$%^&*(),.?\":{}|<>"
+    if not any(c in special_chars for c in password):
+        return "Password must contain at least one special character."
+    
+    return None
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
@@ -46,6 +72,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     user = db.query(User).filter(User.email == email).first()
     if user is None:
         raise credentials_exception
+    if not user.is_approved:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is pending admin approval.",
+        )
     return user
 
 async def get_current_admin(current_user: User = Depends(get_current_user)):

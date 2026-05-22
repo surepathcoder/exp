@@ -103,7 +103,60 @@ class _UserManagementSectionState extends ConsumerState<UserManagementSection> {
                 child: Text(user.name[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 14)),
               ),
               title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.w500)),
-              subtitle: Text('${user.email}  •  ${user.role.name.toUpperCase()}', style: const TextStyle(fontSize: 12)),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 2),
+                  Text(user.email, style: const TextStyle(fontSize: 11)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: user.role.name == 'superadmin'
+                              ? AppTheme.secondaryColor.withOpacity(0.15)
+                              : user.role.name == 'admin'
+                                  ? Colors.blue.withOpacity(0.15)
+                                  : Colors.grey.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          user.role.name.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: user.role.name == 'superadmin'
+                                ? AppTheme.secondaryColor
+                                : user.role.name == 'admin'
+                                    ? Colors.blue[700]
+                                    : Colors.grey[700],
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: user.isApproved
+                              ? Colors.green.withOpacity(0.15)
+                              : Colors.orange.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          user.isApproved ? 'APPROVED' : 'PENDING',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: user.isApproved ? Colors.green[700] : Colors.orange[800],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
               trailing: IconButton(
                 icon: const Icon(Icons.lock_reset, size: 20),
                 tooltip: 'Reset Password',

@@ -42,6 +42,19 @@ class ApiService {
     }
   }
 
+  Future<User> register(String name, String email, String password) async {
+    try {
+      final response = await _dio.post('/auth/register', data: {
+        'name': name,
+        'email': email,
+        'password': password,
+      });
+      return User.fromJson(response.data);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   Future<User> getMe() async {
     try {
       final response = await _dio.get('/auth/me');
@@ -72,19 +85,44 @@ class ApiService {
     }
   }
 
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    try {
+      await _dio.put('/settings/change-password', data: {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      });
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   // Expenses
   Future<List<Expense>> getExpenses({
     String? startDate,
     String? endDate,
-    String? category,
+    List<String>? categories,
     int? userId,
+    String? search,
+    double? minAmount,
+    double? maxAmount,
+    String? status,
+    List<String>? projects,
   }) async {
     try {
       final queryParams = <String, dynamic>{};
       if (startDate != null) queryParams['start_date'] = startDate;
       if (endDate != null) queryParams['end_date'] = endDate;
-      if (category != null) queryParams['category'] = category;
+      if (categories != null && categories.isNotEmpty) {
+        queryParams['category'] = categories;
+      }
+      if (projects != null && projects.isNotEmpty) {
+        queryParams['project'] = projects;
+      }
       if (userId != null) queryParams['user_id'] = userId;
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+      if (minAmount != null) queryParams['min_amount'] = minAmount;
+      if (maxAmount != null) queryParams['max_amount'] = maxAmount;
+      if (status != null && status != 'all') queryParams['status'] = status;
 
       final response = await _dio.get('/expenses', queryParameters: queryParams);
       return (response.data as List).map((e) => Expense.fromJson(e)).toList();
@@ -134,15 +172,29 @@ class ApiService {
   Future<List<int>> downloadExpensesCsv({
     String? startDate,
     String? endDate,
-    String? category,
+    List<String>? categories,
     int? userId,
+    String? search,
+    double? minAmount,
+    double? maxAmount,
+    String? status,
+    List<String>? projects,
   }) async {
     try {
       final queryParams = <String, dynamic>{};
       if (startDate != null) queryParams['start_date'] = startDate;
       if (endDate != null) queryParams['end_date'] = endDate;
-      if (category != null) queryParams['category'] = category;
+      if (categories != null && categories.isNotEmpty) {
+        queryParams['category'] = categories;
+      }
+      if (projects != null && projects.isNotEmpty) {
+        queryParams['project'] = projects;
+      }
       if (userId != null) queryParams['user_id'] = userId;
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+      if (minAmount != null) queryParams['min_amount'] = minAmount;
+      if (maxAmount != null) queryParams['max_amount'] = maxAmount;
+      if (status != null && status != 'all') queryParams['status'] = status;
 
       final response = await _dio.get(
         '/expenses/export/csv',
@@ -158,15 +210,29 @@ class ApiService {
   Future<List<int>> downloadExpensesPdf({
     String? startDate,
     String? endDate,
-    String? category,
+    List<String>? categories,
     int? userId,
+    String? search,
+    double? minAmount,
+    double? maxAmount,
+    String? status,
+    List<String>? projects,
   }) async {
     try {
       final queryParams = <String, dynamic>{};
       if (startDate != null) queryParams['start_date'] = startDate;
       if (endDate != null) queryParams['end_date'] = endDate;
-      if (category != null) queryParams['category'] = category;
+      if (categories != null && categories.isNotEmpty) {
+        queryParams['category'] = categories;
+      }
+      if (projects != null && projects.isNotEmpty) {
+        queryParams['project'] = projects;
+      }
       if (userId != null) queryParams['user_id'] = userId;
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+      if (minAmount != null) queryParams['min_amount'] = minAmount;
+      if (maxAmount != null) queryParams['max_amount'] = maxAmount;
+      if (status != null && status != 'all') queryParams['status'] = status;
 
       final response = await _dio.get(
         '/expenses/export/pdf',
@@ -284,6 +350,15 @@ class ApiService {
   Future<User> updateUserRole(int id, String role) async {
     try {
       final response = await _dio.put('/users/$id/role', data: {'role': role});
+      return User.fromJson(response.data);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<User> updateUserApproval(int id, bool isApproved) async {
+    try {
+      final response = await _dio.put('/users/$id/approval', data: {'is_approved': isApproved});
       return User.fromJson(response.data);
     } catch (e) {
       throw _handleError(e);

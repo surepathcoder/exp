@@ -14,7 +14,7 @@ def generate_csv(expenses: List[Expense]) -> str:
     writer = csv.writer(output)
     writer.writerow([
         "Date", "User", "Category", "Amount", "Currency", 
-        "Payment Method", "Location", "Self Receipt", "Note", "Receipt Uploaded"
+        "Project", "Payment Method", "Location", "Self Receipt", "Note", "Receipt Uploaded"
     ])
     
     for exp in expenses:
@@ -24,6 +24,7 @@ def generate_csv(expenses: List[Expense]) -> str:
             exp.category or "",
             exp.amount,
             exp.currency.value if hasattr(exp.currency, 'value') else str(exp.currency),
+            exp.project or "",
             exp.payment_method or "",
             exp.location or "",
             "Yes" if exp.is_self_receipt else "No",
@@ -100,6 +101,8 @@ def generate_pdf(expenses: List[Expense], filters_desc: Dict[str, Any]) -> bytes
         filters_text.append(f"<b>Date Range:</b> {filters_desc['date_range']}")
     if filters_desc.get("category"):
         filters_text.append(f"<b>Category:</b> {filters_desc['category']}")
+    if filters_desc.get("project"):
+        filters_text.append(f"<b>Project:</b> {filters_desc['project']}")
     if filters_desc.get("user"):
         filters_text.append(f"<b>User:</b> {filters_desc['user']}")
         
@@ -154,6 +157,8 @@ def generate_pdf(expenses: List[Expense], filters_desc: Dict[str, Any]) -> bytes
         details = []
         if note_str:
             details.append(note_str)
+        if exp.project:
+            details.append(f"Proj: {exp.project}")
         if exp.payment_method:
             details.append(f"Via: {exp.payment_method}")
         if exp.location:

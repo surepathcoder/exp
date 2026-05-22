@@ -34,16 +34,26 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
   Future<void> fetchExpenses({
     String? startDate,
     String? endDate,
-    String? category,
+    List<String>? categories,
     int? userId,
+    String? search,
+    double? minAmount,
+    double? maxAmount,
+    String? status,
+    List<String>? projects,
   }) async {
     state = state.copyWith(isLoading: true);
     try {
       final expenses = await _apiService.getExpenses(
         startDate: startDate,
         endDate: endDate,
-        category: category,
+        categories: categories,
         userId: userId,
+        search: search,
+        minAmount: minAmount,
+        maxAmount: maxAmount,
+        status: status,
+        projects: projects,
       );
       state = state.copyWith(expenses: expenses, isLoading: false);
     } catch (e) {

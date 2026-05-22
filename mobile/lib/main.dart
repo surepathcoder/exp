@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
+import 'screens/signup_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -10,6 +11,7 @@ import 'screens/expenses_screen.dart';
 import 'screens/add_expense_screen.dart';
 import 'screens/users_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/change_password_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'providers/auth_provider.dart';
@@ -28,7 +30,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isLoggedIn = authState.isAuthenticated;
       final matched = state.matchedLocation;
-      final isAuthRoute = matched == '/login' || matched == '/forgot-password' || matched == '/reset-password';
+      final isAuthRoute = matched == '/login' ||
+          matched == '/signup' ||
+          matched == '/forgot-password' ||
+          matched == '/reset-password';
 
       if (!isLoggedIn && !isAuthRoute) return '/login';
       if (isLoggedIn && isAuthRoute) return '/dashboard';
@@ -38,6 +43,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/signup',
+        builder: (context, state) => const SignUpScreen(),
       ),
       GoRoute(
         path: '/forgot-password',
@@ -87,6 +96,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/profile',
             builder: (context, state) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: '/change-password',
+            builder: (context, state) => const ChangePasswordScreen(),
           ),
           GoRoute(
             path: '/settings',

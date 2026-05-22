@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User
-from app.auth import get_current_user, get_current_superadmin, get_password_hash, verify_password
+from app.auth import get_current_user, get_current_superadmin, get_password_hash, verify_password, validate_password_strength
 from app.schemas import (
     CreateUserRequest, ResetPasswordRequest, ChangePasswordRequest, UserResponse,
 )
@@ -29,6 +29,7 @@ def create_user(
         email=data.email,
         password_hash=get_password_hash(data.password),
         role=data.role,
+        is_approved=True,
     )
     db.add(user)
     db.commit()
@@ -77,8 +78,9 @@ def change_own_password(
     if not verify_password(data.current_password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
 
-    if len(data.new_password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    strength_error = validate_password_strength(data.new_password)
+    if strength_error:
+        raise HTTPException(status_code=400, detail=strength_error)
 
     current_user.password_hash = get_password_hash(data.new_password)
     db.commit()

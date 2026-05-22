@@ -16,6 +16,14 @@ class StorageService {
     await _storage.delete(key: Constants.tokenKey);
   }
 
+  Future<void> saveFavoriteFilters(String jsonStr) async {
+    await _storage.write(key: Constants.favoriteFiltersKey, value: jsonStr);
+  }
+
+  Future<String?> getFavoriteFilters() async {
+    return await _storage.read(key: Constants.favoriteFiltersKey);
+  }
+
   Future<void> clearAll() async {
     await _storage.deleteAll();
   }

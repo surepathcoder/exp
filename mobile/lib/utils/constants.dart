@@ -4,6 +4,7 @@ class Constants {
   
   static const String tokenKey = 'auth_token';
   static const String userKey = 'user_data';
+  static const String favoriteFiltersKey = 'favorite_filters';
 
   static const List<String> categories = [
     "Travel", "Worship committee", "Volunteers committee", "Technical committee",

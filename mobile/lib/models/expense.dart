@@ -10,6 +10,8 @@ class Expense extends Equatable {
   final bool isSelfReceipt;
   final String? paymentMethod;
   final String? location;
+  final String? vendor;
+  final String? project;
   final String? photoUrl;
   final int? userId;
 
@@ -23,6 +25,8 @@ class Expense extends Equatable {
     this.isSelfReceipt = false,
     this.paymentMethod,
     this.location,
+    this.vendor,
+    this.project = 'Operations',
     this.photoUrl,
     this.userId,
   });
@@ -38,6 +42,8 @@ class Expense extends Equatable {
       isSelfReceipt: json['is_self_receipt'] ?? false,
       paymentMethod: json['payment_method'],
       location: json['location'],
+      vendor: json['vendor'],
+      project: json['project'] ?? 'Operations',
       photoUrl: json['photo_url'],
       userId: json['user_id'],
     );
@@ -54,6 +60,8 @@ class Expense extends Equatable {
       'is_self_receipt': isSelfReceipt,
       'payment_method': paymentMethod,
       'location': location,
+      'vendor': vendor,
+      'project': project ?? 'Operations',
       'photo_url': photoUrl,
       if (userId != null) 'user_id': userId,
     };
@@ -69,6 +77,8 @@ class Expense extends Equatable {
     bool? isSelfReceipt,
     String? paymentMethod,
     String? location,
+    String? vendor,
+    String? project,
     String? photoUrl,
     int? userId,
   }) {
@@ -82,6 +92,8 @@ class Expense extends Equatable {
       isSelfReceipt: isSelfReceipt ?? this.isSelfReceipt,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       location: location ?? this.location,
+      vendor: vendor ?? this.vendor,
+      project: project ?? this.project,
       photoUrl: photoUrl ?? this.photoUrl,
       userId: userId ?? this.userId,
     );
@@ -98,6 +110,8 @@ class Expense extends Equatable {
         isSelfReceipt,
         paymentMethod,
         location,
+        vendor,
+        project,
         photoUrl,
         userId,
       ];

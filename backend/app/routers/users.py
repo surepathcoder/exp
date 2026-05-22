@@ -13,6 +13,9 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 class RoleUpdateRequest(BaseModel):
     role: RoleEnum
 
+class ApprovalUpdateRequest(BaseModel):
+    is_approved: bool
+
 @router.get("", response_model=List[UserResponse])
 def get_users(
     db: Session = Depends(get_db),
@@ -34,6 +37,30 @@ def update_user_role(
     user.role = role_update.role
     db.commit()
     db.refresh(user)
+    return user
+
+@router.put("/{user_id}/approval", response_model=UserResponse)
+def update_user_approval(
+    user_id: int,
+    approval_update: ApprovalUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    user.is_approved = approval_update.is_approved
+    db.commit()
+    db.refresh(user)
+    
+    # Audit log the change
+    from app.services import audit_service
+    audit_service.log_change(
+        db, current_user, "update_user_approval", "user", str(user.id),
+        None, {"is_approved": user.is_approved}, None
+    )
+    
     return user
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
