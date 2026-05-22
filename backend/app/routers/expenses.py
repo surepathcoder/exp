@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile, Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
@@ -11,6 +11,8 @@ from app.schemas import ExpenseCreate, ExpenseResponse, ExpenseBase
 from app.models import Expense, User, RoleEnum
 from app.auth import get_current_user
 from app.utils.notification_helper import create_notification, check_and_trigger_balance_warning
+from app.utils.export_helpers import generate_csv, generate_pdf
+
 
 router = APIRouter(prefix="/api/expenses", tags=["expenses"])
 
@@ -52,22 +54,18 @@ def upload_receipt(
         
     return {"photo_url": f"/uploads/{unique_filename}"}
 
-@router.get("", response_model=List[ExpenseResponse])
-def get_expenses(
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
-    category: Optional[str] = None,
-    user_id: Optional[int] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+def _get_filtered_expenses_query(
+    db: Session,
+    current_user: User,
+    start_date: Optional[datetime],
+    end_date: Optional[datetime],
+    category: Optional[str],
+    user_id: Optional[int]
 ):
     query = db.query(Expense)
-    
-    # Permission check: normal users can only see their own
     if current_user.role == RoleEnum.user:
         query = query.filter(Expense.user_id == current_user.id)
     else:
-        # Admins/Superadmins can filter by user_id
         if user_id is not None:
             query = query.filter(Expense.user_id == user_id)
             
@@ -78,7 +76,81 @@ def get_expenses(
     if category:
         query = query.filter(Expense.category == category)
         
-    return query.order_by(Expense.date.desc()).all()
+    return query.order_by(Expense.date.desc())
+
+@router.get("", response_model=List[ExpenseResponse])
+def get_expenses(
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    category: Optional[str] = None,
+    user_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    query = _get_filtered_expenses_query(db, current_user, start_date, end_date, category, user_id)
+    return query.all()
+
+@router.get("/export/csv")
+def export_expenses_csv(
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    category: Optional[str] = None,
+    user_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    query = _get_filtered_expenses_query(db, current_user, start_date, end_date, category, user_id)
+    expenses = query.all()
+    csv_data = generate_csv(expenses)
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=expenses_report.csv"}
+    )
+
+@router.get("/export/pdf")
+def export_expenses_pdf(
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    category: Optional[str] = None,
+    user_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    query = _get_filtered_expenses_query(db, current_user, start_date, end_date, category, user_id)
+    expenses = query.all()
+    
+    # Get user descriptor
+    user_desc = None
+    if current_user.role == RoleEnum.user:
+        user_desc = current_user.name
+    elif user_id is not None:
+        selected_user = db.query(User).filter(User.id == user_id).first()
+        if selected_user:
+            user_desc = selected_user.name
+            
+    # Format filters description
+    date_range = None
+    if start_date and end_date:
+        date_range = f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}"
+    elif start_date:
+        date_range = f"From {start_date.strftime('%Y-%m-%d')}"
+    elif end_date:
+        date_range = f"To {end_date.strftime('%Y-%m-%d')}"
+        
+    filters_desc = {
+        "date_range": date_range,
+        "category": category,
+        "user": user_desc
+    }
+    
+    pdf_bytes = generate_pdf(expenses, filters_desc)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=expenses_report.pdf"}
+    )
+
 
 @router.post("", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
 async def create_expense(

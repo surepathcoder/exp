@@ -26,6 +26,8 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     role = Column(Enum(RoleEnum), default=RoleEnum.user, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    reset_token = Column(String, nullable=True)
+    reset_token_expires = Column(DateTime, nullable=True)
 
     expenses = relationship("Expense", back_populates="owner", cascade="all, delete-orphan")
     incomes = relationship("Income", back_populates="owner", cascade="all, delete-orphan")

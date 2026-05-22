@@ -135,3 +135,14 @@ class UserNotificationResponse(BaseModel):
 
 class UnreadCountResponse(BaseModel):
     count: int
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class PublicResetPasswordRequest(BaseModel):
+    email: EmailStr
+    token: str
+    new_password: str
+

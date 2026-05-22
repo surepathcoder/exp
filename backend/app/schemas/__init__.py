@@ -7,6 +7,7 @@ from app.schemas.core import (
     TransferBase, TransferCreate, TransferResponse,
     NotificationBase, NotificationCreate, NotificationResponse,
     UserNotificationResponse, UnreadCountResponse,
+    ForgotPasswordRequest, PublicResetPasswordRequest,
 )
 from app.schemas.settings_schemas import SystemSettingsResponse, SystemSettingsUpdate
 from app.schemas.category_schemas import (
@@ -25,6 +26,7 @@ __all__ = [
     "TransferBase", "TransferCreate", "TransferResponse",
     "NotificationBase", "NotificationCreate", "NotificationResponse",
     "UserNotificationResponse", "UnreadCountResponse",
+    "ForgotPasswordRequest", "PublicResetPasswordRequest",
     "SystemSettingsResponse", "SystemSettingsUpdate",
     "CategoryResponse", "CategoryCreate", "CategoryUpdate", "CategoryReorder",
     "CreateUserRequest", "ResetPasswordRequest", "ChangePasswordRequest",

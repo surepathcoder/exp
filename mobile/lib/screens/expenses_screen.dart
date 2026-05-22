@@ -8,6 +8,8 @@ import '../theme/app_theme.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/expense_card.dart';
 import '../utils/constants.dart';
+import '../utils/downloader.dart';
+import '../services/api_service.dart';
 
 class ExpensesScreen extends ConsumerStatefulWidget {
   const ExpensesScreen({super.key});
@@ -39,6 +41,59 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     );
   }
 
+  Future<void> _exportData(String format) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      final api = ref.read(apiServiceProvider);
+      List<int> bytes;
+      String filename;
+      
+      if (format == 'csv') {
+        bytes = await api.downloadExpensesCsv(
+          category: _selectedCategory,
+          userId: _selectedUserId,
+        );
+        filename = 'expenses_report_${DateTime.now().millisecondsSinceEpoch}.csv';
+      } else {
+        bytes = await api.downloadExpensesPdf(
+          category: _selectedCategory,
+          userId: _selectedUserId,
+        );
+        filename = 'expenses_report_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      }
+
+      if (mounted) Navigator.of(context).pop();
+
+      await downloadFile(bytes, filename);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Report exported successfully as ${format.toUpperCase()}!'),
+            backgroundColor: AppTheme.primaryColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export report: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final expenseState = ref.watch(expenseProvider);
@@ -58,6 +113,27 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       appBar: AppBar(
         title: const Text('Expenses'),
         actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.download),
+            tooltip: 'Export Data',
+            onSelected: _exportData,
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'csv',
+                child: ListTile(
+                  leading: Icon(Icons.table_chart, color: Colors.green),
+                  title: Text('Export to CSV'),
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'pdf',
+                child: ListTile(
+                  leading: Icon(Icons.picture_as_pdf, color: Colors.red),
+                  title: Text('Export to PDF'),
+                ),
+              ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.filter_list),
             onPressed: () {

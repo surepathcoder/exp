@@ -51,6 +51,27 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    try {
+      final response = await _dio.post('/auth/forgot-password', data: {'email': email});
+      return response.data;
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<void> resetPassword(String email, String token, String newPassword) async {
+    try {
+      await _dio.post('/auth/reset-password', data: {
+        'email': email,
+        'token': token,
+        'new_password': newPassword,
+      });
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   // Expenses
   Future<List<Expense>> getExpenses({
     String? startDate,
@@ -105,6 +126,54 @@ class ApiService {
   Future<void> deleteExpense(int id) async {
     try {
       await _dio.delete('/expenses/$id');
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<List<int>> downloadExpensesCsv({
+    String? startDate,
+    String? endDate,
+    String? category,
+    int? userId,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (startDate != null) queryParams['start_date'] = startDate;
+      if (endDate != null) queryParams['end_date'] = endDate;
+      if (category != null) queryParams['category'] = category;
+      if (userId != null) queryParams['user_id'] = userId;
+
+      final response = await _dio.get(
+        '/expenses/export/csv',
+        queryParameters: queryParams,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data as List<int>;
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<List<int>> downloadExpensesPdf({
+    String? startDate,
+    String? endDate,
+    String? category,
+    int? userId,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (startDate != null) queryParams['start_date'] = startDate;
+      if (endDate != null) queryParams['end_date'] = endDate;
+      if (category != null) queryParams['category'] = category;
+      if (userId != null) queryParams['user_id'] = userId;
+
+      final response = await _dio.get(
+        '/expenses/export/pdf',
+        queryParameters: queryParams,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data as List<int>;
     } catch (e) {
       throw _handleError(e);
     }
