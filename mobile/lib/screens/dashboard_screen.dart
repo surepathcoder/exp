@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/income_provider.dart';
@@ -10,6 +11,11 @@ import '../widgets/dashboard/trend_line_chart.dart';
 import '../widgets/dashboard/category_pie_chart.dart';
 import '../widgets/dashboard/income_expense_bar_chart.dart';
 import '../widgets/dashboard/recent_transactions_section.dart';
+import '../widgets/navigation_drawer.dart';
+import '../widgets/add_income_dialog.dart';
+import '../widgets/add_transfer_dialog.dart';
+import '../widgets/currency_exchange_dialog.dart';
+
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -33,6 +39,103 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ]);
   }
 
+  Widget _buildActionButtons(BuildContext context) {
+    final primaryColor = Theme.of(context).primaryColor;
+    
+    Widget buildButton(String label, VoidCallback onTap) {
+      return Expanded(
+        child: Material(
+          color: primaryColor,
+          borderRadius: BorderRadius.circular(4),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(4),
+            child: Container(
+              height: 52,
+              alignment: Alignment.center,
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget buildFullWidthButton(String label, VoidCallback onTap) {
+      return Material(
+        color: primaryColor,
+        borderRadius: BorderRadius.circular(4),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            height: 52,
+            alignment: Alignment.center,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        buildFullWidthButton('VIEW TRANSACTIONS', () {
+          context.go('/expenses');
+        }),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            buildButton('NEW EXPENSE', () {
+              context.go('/expenses/add');
+            }),
+            const SizedBox(width: 8),
+            buildButton('CURRENCY EXCH.', () {
+              showDialog(
+                context: context,
+                builder: (context) => const CurrencyExchangeDialog(),
+              );
+            }),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            buildButton('NEW INCOME', () {
+              showDialog(
+                context: context,
+                builder: (context) => const AddIncomeDialog(),
+              );
+            }),
+            const SizedBox(width: 8),
+            buildButton('NEW TRANSFER', () {
+              showDialog(
+                context: context,
+                builder: (context) => const AddTransferDialog(),
+              );
+            }),
+          ],
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final dashboardState = ref.watch(dashboardProvider);
@@ -50,8 +153,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       );
     }
 
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
+      drawer: isMobile ? const AppNavigationDrawer() : null,
       appBar: AppBar(
         title: const Text('Dashboard', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
@@ -64,30 +170,50 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshData,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              HeaderSection(),
-              SizedBox(height: 12),
-              SummaryCards(),
-              SizedBox(height: 16),
-              TrendLineChart(),
-              SizedBox(height: 16),
-              CategoryPieChart(),
-              SizedBox(height: 16),
-              IncomeExpenseBarChart(),
-              SizedBox(height: 16),
-              RecentTransactionsSection(),
-              SizedBox(height: 80),
-            ],
+      body: Column(
+        children: [
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _refreshData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    HeaderSection(),
+                    SizedBox(height: 12),
+                    SummaryCards(),
+                    SizedBox(height: 16),
+                    TrendLineChart(),
+                    SizedBox(height: 16),
+                    CategoryPieChart(),
+                    SizedBox(height: 16),
+                    IncomeExpenseBarChart(),
+                    SizedBox(height: 16),
+                    RecentTransactionsSection(),
+                    SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
+          SafeArea(
+            top: false,
+            child: Container(
+              color: Colors.grey[50],
+              padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 12.0, top: 8.0),
+              child: Center(
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: _buildActionButtons(context),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
+

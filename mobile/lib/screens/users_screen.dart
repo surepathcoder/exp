@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../models/enums.dart';
 import '../theme/app_theme.dart';
 import '../widgets/loading_widget.dart';
+import '../widgets/navigation_drawer.dart';
 
 class UsersScreen extends ConsumerStatefulWidget {
   const UsersScreen({super.key});
@@ -37,6 +38,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
     });
 
     return Scaffold(
+      drawer: MediaQuery.of(context).size.width < 600 ? const AppNavigationDrawer() : null,
       appBar: AppBar(
         title: const Text('Users'),
         actions: [

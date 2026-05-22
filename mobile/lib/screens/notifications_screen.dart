@@ -7,6 +7,7 @@ import '../providers/notification_provider.dart';
 import '../providers/unread_notification_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/admin_broadcast_dialog.dart';
+import '../widgets/navigation_drawer.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -90,6 +91,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     final isSuperAdmin = authState.user?.role == UserRole.superadmin;
 
     return Scaffold(
+      drawer: MediaQuery.of(context).size.width < 600 ? const AppNavigationDrawer() : null,
       appBar: AppBar(
         title: const Text('Notifications'),
         actions: [

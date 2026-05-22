@@ -19,6 +19,8 @@ import '../utils/color_parser.dart';
 import '../utils/category_icons.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import '../widgets/navigation_drawer.dart';
+
 
 class ExpensesScreen extends ConsumerStatefulWidget {
   const ExpensesScreen({super.key});
@@ -714,7 +716,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         _selectedUserId != null;
 
     return Scaffold(
+      drawer: MediaQuery.of(context).size.width < 600 ? const AppNavigationDrawer() : null,
       appBar: AppBar(
+
         title: const Text('Expenses'),
         actions: [
           PopupMenuButton<String>(

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/settings_provider.dart';
 import '../../services/settings_api_service.dart';
-import '../../models/enums.dart';
 import '../../theme/app_theme.dart';
 
 class CreateUserDialog extends ConsumerStatefulWidget {

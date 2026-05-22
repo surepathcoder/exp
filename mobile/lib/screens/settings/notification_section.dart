@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../models/system_settings.dart';
-import '../../theme/app_theme.dart';
 
 class NotificationSection extends StatefulWidget {
   final SystemSettings settings;

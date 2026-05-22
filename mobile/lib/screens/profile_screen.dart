@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
+import '../widgets/navigation_drawer.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -12,6 +13,7 @@ class ProfileScreen extends ConsumerWidget {
     final user = ref.watch(authProvider).user;
 
     return Scaffold(
+      drawer: MediaQuery.of(context).size.width < 600 ? const AppNavigationDrawer() : null,
       appBar: AppBar(
         title: const Text('Profile'),
       ),

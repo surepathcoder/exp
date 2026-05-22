@@ -15,7 +15,8 @@ import 'screens/change_password_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'providers/auth_provider.dart';
-import 'providers/unread_notification_provider.dart';
+import 'widgets/navigation_drawer.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,7 +62,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       ShellRoute(
         builder: (context, state, child) {
-          return ScaffoldWithBottomNavBar(child: child);
+          return ScaffoldWithNavigationSidebar(child: child);
         },
         routes: [
           GoRoute(
@@ -127,86 +128,31 @@ class ExpenseTrackerApp extends ConsumerWidget {
   }
 }
 
-class ScaffoldWithBottomNavBar extends ConsumerWidget {
+class ScaffoldWithNavigationSidebar extends ConsumerWidget {
   final Widget child;
-  const ScaffoldWithBottomNavBar({super.key, required this.child});
+  const ScaffoldWithNavigationSidebar({super.key, required this.child});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authProvider).user;
-    final showUsersTab = user != null && user.role.name != 'user';
+    final isDesktop = MediaQuery.of(context).size.width >= 600;
 
-    int currentIndex = _calculateSelectedIndex(context, showUsersTab);
-
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
-        onTap: (index) => _onItemTapped(index, context, showUsersTab),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppTheme.primaryColor,
-        unselectedItemColor: Colors.grey,
-        items: [
-          const BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-          const BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Expenses'),
-          BottomNavigationBarItem(
-            icon: Consumer(
-              builder: (context, ref, _) {
-                final unreadCount = ref.watch(unreadNotificationProvider);
-                return Badge(
-                  isLabelVisible: unreadCount > 0,
-                  label: Text(unreadCount > 99 ? '99+' : '$unreadCount'),
-                  child: const Icon(Icons.notifications_none),
-                );
-              },
+    if (isDesktop) {
+      return Scaffold(
+        body: Row(
+          children: [
+            const SizedBox(
+              width: 260,
+              child: AppNavigationDrawer(isDrawer: false),
             ),
-            label: 'Notifications',
-          ),
-          if (showUsersTab)
-            const BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Users'),
-          const BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
-      ),
-    );
-  }
-
-  int _calculateSelectedIndex(BuildContext context, bool showUsersTab) {
-    final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/dashboard')) return 0;
-    if (location.startsWith('/expenses')) return 1;
-    if (location.startsWith('/notifications')) return 2;
-    if (showUsersTab) {
-      if (location.startsWith('/users')) return 3;
-      if (location.startsWith('/profile')) return 4;
-    } else {
-      if (location.startsWith('/profile')) return 3;
+            const VerticalDivider(width: 1, thickness: 1),
+            Expanded(
+              child: child,
+            ),
+          ],
+        ),
+      );
     }
-    return 0;
-  }
 
-  void _onItemTapped(int index, BuildContext context, bool showUsersTab) {
-    switch (index) {
-      case 0:
-        context.go('/dashboard');
-        break;
-      case 1:
-        context.go('/expenses');
-        break;
-      case 2:
-        context.go('/notifications');
-        break;
-      case 3:
-        if (showUsersTab) {
-          context.go('/users');
-        } else {
-          context.go('/profile');
-        }
-        break;
-      case 4:
-        if (showUsersTab) {
-          context.go('/profile');
-        }
-        break;
-    }
+    return child;
   }
 }
