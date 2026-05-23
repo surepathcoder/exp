@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 from app.database import get_db
 from app.schemas import UserResponse
@@ -75,3 +75,25 @@ def delete_user(
         
     db.delete(user)
     db.commit()
+
+class ProfileUpdateRequest(BaseModel):
+    name: str
+    email: EmailStr
+
+@router.put("/me", response_model=UserResponse)
+def update_profile(
+    profile_data: ProfileUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if profile_data.email != current_user.email:
+        existing = db.query(User).filter(User.email == profile_data.email).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already in use")
+            
+    current_user.name = profile_data.name
+    current_user.email = profile_data.email
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+

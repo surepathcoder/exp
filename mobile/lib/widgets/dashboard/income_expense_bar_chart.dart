@@ -147,7 +147,7 @@ class IncomeExpenseBarChart extends ConsumerWidget {
                   ),
                   barTouchData: BarTouchData(
                     touchTooltipData: BarTouchTooltipData(
-                      tooltipBgColor: Colors.blueGrey[800]!,
+                      getTooltipColor: (group) => Colors.blueGrey[800]!,
                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                         return BarTooltipItem(
                           '\$${rod.toY.toStringAsFixed(2)}',

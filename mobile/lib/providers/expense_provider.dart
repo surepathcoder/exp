@@ -1,6 +1,7 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../models/expense.dart';
 import '../services/api_service.dart';
+import '../utils/currency_converter.dart';
 
 class ExpenseState {
   final List<Expense> expenses;
@@ -55,6 +56,17 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
         status: status,
         projects: projects,
       );
+      
+      // Update currency rates in background asynchronously
+      _apiService.getRates().then((rates) async {
+        CurrencyConverter.updateRates(rates);
+        if (rates['TZS'] == 2500.0 && rates['KES'] == 130.0) {
+          await CurrencyConverter.fetchFallbackRates();
+        }
+      }).catchError((err) async {
+        await CurrencyConverter.fetchFallbackRates();
+      });
+
       state = state.copyWith(expenses: expenses, isLoading: false);
     } catch (e) {
       state = state.copyWith(error: e.toString(), isLoading: false);

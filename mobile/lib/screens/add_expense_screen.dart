@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import '../models/expense.dart';
 import '../providers/expense_provider.dart';
 import '../services/api_service.dart';
@@ -46,6 +47,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   XFile? _selectedImage;
   Uint8List? _imageBytes;
   bool _isUploadingImage = false;
+
+  String? _selectedFileName;
+  Uint8List? _selectedFileBytes;
 
   bool _isEditing = false;
   Expense? _existingExpense;
@@ -123,12 +127,38 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         setState(() {
           _selectedImage = pickedFile;
           _imageBytes = bytes;
+          _selectedFileName = null;
+          _selectedFileBytes = null;
         });
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to pick image: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickPdf() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        withData: true,
+      );
+      if (result != null && result.files.single.bytes != null) {
+        setState(() {
+          _selectedFileName = result.files.single.name;
+          _selectedFileBytes = result.files.single.bytes;
+          _selectedImage = null;
+          _imageBytes = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick PDF: $e')),
         );
       }
     }
@@ -183,6 +213,24 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           photoUrl = await apiService.uploadReceipt(
             _imageBytes!,
             _selectedImage!.name,
+          );
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to upload receipt: $e')),
+            );
+          }
+          setState(() {
+            _isUploadingImage = false;
+          });
+          return;
+        }
+      } else if (_selectedFileName != null && _selectedFileBytes != null) {
+        try {
+          final apiService = ref.read(apiServiceProvider);
+          photoUrl = await apiService.uploadReceipt(
+            _selectedFileBytes!,
+            _selectedFileName!,
           );
         } catch (e) {
           if (mounted) {
@@ -452,11 +500,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 children: [
                   _buildAttachButton(Icons.camera_alt, 'TAKE\nPHOTO', () => _pickImage(ImageSource.camera)),
                   _buildAttachButton(Icons.image, 'PICK\nPHOTO', () => _pickImage(ImageSource.gallery)),
-                  _buildAttachButton(Icons.picture_as_pdf, 'PICK\nPDF', () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Only image attachments are currently supported')),
-                    );
-                  }),
+                  _buildAttachButton(Icons.picture_as_pdf, 'PICK\nPDF', _pickPdf),
                 ],
               ),
               if (_selectedImage != null && _imageBytes != null)
@@ -490,6 +534,57 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                     ],
                   ),
                 )
+              else if (_selectedFileName != null && _selectedFileBytes != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16.0),
+                  child: Stack(
+                    alignment: Alignment.topRight,
+                    children: [
+                      Container(
+                        height: 100,
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.picture_as_pdf, color: Colors.red, size: 40),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    'PDF Receipt Selected',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _selectedFileName!,
+                                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+                        onPressed: () => setState(() {
+                          _selectedFileName = null;
+                          _selectedFileBytes = null;
+                        }),
+                      ),
+                    ],
+                  ),
+                )
               else if (_existingExpense?.photoUrl != null && _existingExpense!.photoUrl!.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 16.0),
@@ -497,22 +592,57 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                     alignment: Alignment.topRight,
                     children: [
                       Container(
-                        height: 200,
+                        height: _existingExpense!.photoUrl!.toLowerCase().endsWith('.pdf') ? 100 : 200,
                         width: double.infinity,
+                        padding: _existingExpense!.photoUrl!.toLowerCase().endsWith('.pdf')
+                            ? const EdgeInsets.all(16)
+                            : EdgeInsets.zero,
                         decoration: BoxDecoration(
+                          color: _existingExpense!.photoUrl!.toLowerCase().endsWith('.pdf')
+                              ? Colors.grey.shade100
+                              : null,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.grey.shade300),
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            _getFullPhotoUrl(_existingExpense!.photoUrl!),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Center(child: Icon(Icons.image_not_supported, size: 50));
-                            },
-                          ),
-                        ),
+                        child: _existingExpense!.photoUrl!.toLowerCase().endsWith('.pdf')
+                            ? Row(
+                                children: [
+                                  const Icon(Icons.picture_as_pdf, color: Colors.red, size: 40),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Text(
+                                          'Attached PDF Receipt',
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _existingExpense!.photoUrl!.split('/').last,
+                                          style: const TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 12,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  _getFullPhotoUrl(_existingExpense!.photoUrl!),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Center(child: Icon(Icons.image_not_supported, size: 50));
+                                  },
+                                ),
+                              ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red, size: 30),

@@ -110,14 +110,14 @@ def _add_summary_section(story: List[Any], report_type: str, expenses: List[Expe
     for inc in incomes:
         curr = inc.currency.value if hasattr(inc.currency, 'value') else str(inc.currency)
         if curr in sums:
-            sums[curr]["in"] += inc.amount
-            sums[curr]["net"] += inc.amount
+            sums[curr]["in"] += float(inc.amount)
+            sums[curr]["net"] += float(inc.amount)
             
     for exp in expenses:
         curr = exp.currency.value if hasattr(exp.currency, 'value') else str(exp.currency)
         if curr in sums:
-            sums[curr]["out"] += exp.amount
-            sums[curr]["net"] -= exp.amount
+            sums[curr]["out"] += float(exp.amount)
+            sums[curr]["net"] -= float(exp.amount)
             
     # Format the cash flow text
     lines = []

@@ -7,13 +7,15 @@ import 'package:intl/intl.dart';
 import '../models/user.dart';
 import '../models/enums.dart';
 import '../providers/expense_provider.dart';
+import '../providers/income_provider.dart';
+import '../providers/transfer_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/category_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/loading_widget.dart';
-import '../widgets/expense_card.dart';
-import '../widgets/category_chip.dart';
+import '../widgets/add_income_dialog.dart';
+import '../widgets/add_transfer_dialog.dart';
 import '../utils/downloader.dart';
 import '../utils/color_parser.dart';
 import '../utils/category_icons.dart';
@@ -38,6 +40,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   double? _maxAmount;
   String _status = 'all'; // 'all', 'has_receipt', 'missing_receipt', 'self_receipt', 'standard_receipt'
   int? _selectedUserId;
+  String _selectedType = 'ALL'; // 'ALL', 'EXPENSE', 'INCOME', 'TRANSFER'
 
   List<Map<String, dynamic>> _savedFiltersList = [];
   final TextEditingController _searchController = TextEditingController();
@@ -123,6 +126,16 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       maxAmount: _maxAmount,
       status: _status,
       projects: _selectedProjects.isEmpty ? null : _selectedProjects,
+    );
+    await ref.read(incomeProvider.notifier).fetchIncomes(
+      userId: _selectedUserId,
+      startDate: startStr,
+      endDate: endStr,
+    );
+    await ref.read(transferProvider.notifier).fetchTransfers(
+      userId: _selectedUserId,
+      startDate: startStr,
+      endDate: endStr,
     );
   }
 
@@ -694,6 +707,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   @override
   Widget build(BuildContext context) {
     final expenseState = ref.watch(expenseProvider);
+    final incomeState = ref.watch(incomeProvider);
+    final transferState = ref.watch(transferProvider);
     final user = ref.watch(authProvider).user;
     final userState = ref.watch(userProvider);
     final categoryState = ref.watch(categoryProvider);
@@ -715,11 +730,98 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         _status != 'all' ||
         _selectedUserId != null;
 
+    // Combine transactions
+    final List<_UnifiedTx> allTxs = [];
+
+    // Add Expenses
+    for (var e in expenseState.expenses) {
+      allTxs.add(_UnifiedTx(
+        id: 'exp_${e.id}',
+        title: e.category,
+        amount: e.amount,
+        currency: e.currency,
+        date: e.date,
+        project: e.project ?? 'Operations',
+        type: 'expense',
+        originalId: e.id!,
+        userId: e.userId,
+      ));
+    }
+
+    // Add Incomes
+    for (var i in incomeState.incomes) {
+      allTxs.add(_UnifiedTx(
+        id: 'inc_${i.id}',
+        title: i.source,
+        amount: i.amount,
+        currency: i.currency,
+        date: i.date,
+        project: 'Income',
+        type: 'income',
+        originalId: i.id!,
+        userId: i.userId,
+      ));
+    }
+
+    // Add Transfers
+    for (var t in transferState.transfers) {
+      allTxs.add(_UnifiedTx(
+        id: 'trn_${t.id}',
+        title: 'Transfer',
+        amount: t.amountFrom,
+        currency: t.currencyFrom,
+        date: t.date,
+        project: t.note ?? 'Transfer',
+        type: 'transfer',
+        originalId: t.id!,
+        userId: t.userId,
+      ));
+    }
+
+    // Sort chronologically (newest first)
+    allTxs.sort((a, b) => b.date.compareTo(a.date));
+
+    // Filter combined list
+    final filteredTxs = allTxs.where((tx) {
+      // 1. Filter by Type
+      if (_selectedType != 'ALL' && tx.type.toUpperCase() != _selectedType) {
+        return false;
+      }
+      
+      // 2. Filter by Search Text
+      if (_searchText.isNotEmpty) {
+        final titleMatch = tx.title.toLowerCase().contains(_searchText.toLowerCase());
+        final projectMatch = tx.project.toLowerCase().contains(_searchText.toLowerCase());
+        if (!titleMatch && !projectMatch) return false;
+      }
+      
+      // 3. Filter by Category (only applies to expenses)
+      if (_selectedCategories.isNotEmpty) {
+        if (tx.type != 'expense' || !_selectedCategories.contains(tx.title)) {
+          return false;
+        }
+      }
+      
+      // 4. Filter by Project
+      if (_selectedProjects.isNotEmpty) {
+        if (!_selectedProjects.contains(tx.project)) {
+          return false;
+        }
+      }
+      
+      // 5. Filter by Min/Max Amount
+      if (_minAmount != null && tx.amount < _minAmount!) return false;
+      if (_maxAmount != null && tx.amount > _maxAmount!) return false;
+      
+      return true;
+    }).toList();
+
+    final isLoading = expenseState.isLoading || incomeState.isLoading || transferState.isLoading;
+
     return Scaffold(
       drawer: MediaQuery.of(context).size.width < 600 ? const AppNavigationDrawer() : null,
       appBar: AppBar(
-
-        title: const Text('Expenses'),
+        title: const Text('HISTORY'),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.download),
@@ -746,6 +848,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       ),
       body: Column(
         children: [
+          // Search & Filter Row
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Row(
@@ -755,7 +858,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                     controller: _searchController,
                     onChanged: _onSearchChanged,
                     decoration: InputDecoration(
-                      hintText: 'Search vendor, note, location...',
+                      hintText: 'Search notes, projects...',
                       prefixIcon: const Icon(Icons.search, color: AppTheme.primaryColor),
                       suffixIcon: _searchController.text.isNotEmpty
                           ? IconButton(
@@ -799,47 +902,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.white,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  CategoryChip(
-                    label: 'All',
-                    isSelected: _selectedCategories.isEmpty,
-                    onSelected: (selected) {
-                      setState(() => _selectedCategories.clear());
-                      _fetchData();
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  ...categoryState.categories
-                      .where((cat) => cat.type == 'expense')
-                      .map((category) => Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: CategoryChip(
-                              label: category.name,
-                              icon: CategoryIconHelper.getIcon(category.icon),
-                              color: ColorParser.fromHex(category.color),
-                              isSelected: _selectedCategories.contains(category.name),
-                              onSelected: (selected) {
-                                setState(() {
-                                  if (selected) {
-                                    _selectedCategories.add(category.name);
-                                  } else {
-                                    _selectedCategories.remove(category.name);
-                                  }
-                                });
-                                _fetchData();
-                              },
-                            ),
-                          )),
-                ],
-              ),
-            ),
-          ),
+          
+          // Filter Chips (ALL, EXPENSE, INCOME, TRANSFER)
+          _buildTypeFilterBar(),
+
+          // Active filter badges
           if (hasActiveFilters)
             Container(
               height: 40,
@@ -938,27 +1005,57 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 ],
               ),
             ),
+
+          // TRANSACTION LOGS Count
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'TRANSACTION LOGS',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade500,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                Text(
+                  '${filteredTxs.length} ITEMS',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // List Items
           Expanded(
             child: RefreshIndicator(
               onRefresh: _fetchData,
-              child: expenseState.isLoading && expenseState.expenses.isEmpty
+              child: isLoading && filteredTxs.isEmpty
                   ? const LoadingWidget()
-                  : expenseState.expenses.isEmpty
+                  : filteredTxs.isEmpty
                       ? ListView(
                           children: const [
                             SizedBox(height: 100),
-                            Center(child: Text('No expenses found.')),
+                            Center(child: Text('No transactions found.')),
                           ],
                         )
                       : ListView.builder(
-                          itemCount: expenseState.expenses.length,
+                          padding: const EdgeInsets.only(bottom: 24),
+                          itemCount: filteredTxs.length,
                           itemBuilder: (context, index) {
-                            final expense = expenseState.expenses[index];
-                            final canEdit = expense.userId == user?.id || isAdmin;
+                            final tx = filteredTxs[index];
+                            final canEdit = tx.userId == user?.id || isAdmin;
 
                             return canEdit
                                 ? Dismissible(
-                                    key: Key('expense_${expense.id}'),
+                                    key: Key('tx_${tx.id}'),
                                     background: Container(
                                       color: AppTheme.errorColor,
                                       alignment: Alignment.centerRight,
@@ -970,8 +1067,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                       return await showDialog(
                                         context: context,
                                         builder: (ctx) => AlertDialog(
-                                          title: const Text('Delete Expense'),
-                                          content: const Text('Are you sure you want to delete this expense?'),
+                                          title: Text('Delete ${tx.type.toUpperCase()}'),
+                                          content: Text('Are you sure you want to delete this ${tx.type}?'),
                                           actions: [
                                             TextButton(
                                               onPressed: () => Navigator.of(ctx).pop(false),
@@ -986,33 +1083,317 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                       );
                                     },
                                     onDismissed: (direction) {
-                                      if (expense.id != null) {
-                                        ref.read(expenseProvider.notifier).deleteExpense(expense.id!);
+                                      if (tx.type == 'expense') {
+                                        ref.read(expenseProvider.notifier).deleteExpense(tx.originalId);
+                                      } else if (tx.type == 'income') {
+                                        ref.read(incomeProvider.notifier).deleteIncome(tx.originalId);
+                                      } else {
+                                        ref.read(transferProvider.notifier).deleteTransfer(tx.originalId);
                                       }
                                     },
-                                    child: ExpenseCard(
-                                      expense: expense,
-                                      onTap: () => context.go('/expenses/edit', extra: expense.id),
-                                    ),
+                                    child: _buildTransactionCard(tx),
                                   )
-                                : ExpenseCard(
-                                    expense: expense,
-                                    onTap: () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('You cannot edit this expense')),
-                                      );
-                                    },
-                                  );
+                                : _buildTransactionCard(tx);
                           },
                         ),
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/expenses/add'),
-        child: const Icon(Icons.add),
+      bottomNavigationBar: _buildBottomBar(context),
+    );
+  }
+
+  Widget _buildTypeFilterBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      color: Colors.white,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildTypeChip('ALL'),
+          _buildTypeChip('EXPENSE'),
+          _buildTypeChip('INCOME'),
+          _buildTypeChip('TRANSFER'),
+        ],
       ),
     );
   }
+
+  Widget _buildTypeChip(String type) {
+    final isSelected = _selectedType == type;
+    return ChoiceChip(
+      label: Text(
+        type,
+        style: TextStyle(
+          color: isSelected ? Colors.white : Colors.grey.shade500,
+          fontWeight: FontWeight.bold,
+          fontSize: 11,
+        ),
+      ),
+      selected: isSelected,
+      onSelected: (selected) {
+        if (selected) {
+          setState(() {
+            _selectedType = type;
+          });
+        }
+      },
+      selectedColor: AppTheme.primaryColor,
+      backgroundColor: Colors.grey.shade100,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide.none,
+      ),
+      showCheckmark: false,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    );
+  }
+
+  Widget _buildTransactionCard(_UnifiedTx tx) {
+    IconData arrowIcon;
+    Color circleBg;
+    Color iconColor;
+    Color amountColor;
+    String amountSign;
+
+    if (tx.type == 'expense') {
+      arrowIcon = Icons.north_east;
+      circleBg = AppTheme.primaryColor.withOpacity(0.08);
+      iconColor = AppTheme.primaryColor;
+      amountColor = const Color(0xFFE5A93C); // Amber/gold
+      amountSign = '-';
+    } else if (tx.type == 'income') {
+      arrowIcon = Icons.south_west;
+      circleBg = const Color(0xFF10B981).withOpacity(0.08); // green
+      iconColor = const Color(0xFF10B981);
+      amountColor = const Color(0xFF10B981);
+      amountSign = '+';
+    } else {
+      // transfer
+      arrowIcon = Icons.swap_horiz;
+      circleBg = Colors.blue.withOpacity(0.08);
+      iconColor = Colors.blue;
+      amountColor = Colors.blue;
+      amountSign = '⇄';
+    }
+
+    final formatter = NumberFormat.simpleCurrency(name: tx.currency);
+    final formattedAmount = formatter.format(tx.amount).replaceAll(formatter.currencySymbol, '');
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade100, width: 1),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: circleBg,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            arrowIcon,
+            color: iconColor,
+            size: 20,
+          ),
+        ),
+        title: Text(
+          tx.title.toUpperCase(),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            letterSpacing: 0.5,
+            color: Colors.black87,
+          ),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4.0),
+          child: Text(
+            '${DateFormat('yyyy-MM-dd').format(tx.date)}  •  ${tx.project.toUpperCase()}',
+            style: TextStyle(
+              color: Colors.grey.shade400,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              '$amountSign$formattedAmount',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: amountColor,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              tx.currency,
+              style: TextStyle(
+                fontSize: 11,
+                color: amountColor.withOpacity(0.7),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        onTap: () {
+          if (tx.type == 'expense') {
+            context.go('/expenses/edit', extra: tx.originalId);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Details for ${tx.type} can be viewed on Dashboard')),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildBottomBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: Container(
+        height: 70,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(35),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildBottomBarItem(
+              icon: Icons.history,
+              label: 'LOGS',
+              isActive: true,
+              onTap: () {
+                _fetchData();
+              },
+            ),
+            _buildBottomBarItem(
+              icon: Icons.remove,
+              label: 'SPENT',
+              isActive: false,
+              onTap: () => context.go('/expenses/add'),
+            ),
+            GestureDetector(
+              onTap: () => context.go('/expenses/add'),
+              child: Container(
+                width: 54,
+                height: 54,
+                decoration: const BoxDecoration(
+                  color: AppTheme.primaryColor,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.add,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+            ),
+            _buildBottomBarItem(
+              icon: Icons.add,
+              label: 'EARNED',
+              isActive: false,
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => const AddIncomeDialog(),
+                ).then((_) => _fetchData());
+              },
+            ),
+            _buildBottomBarItem(
+              icon: Icons.swap_horiz,
+              label: 'MOVE',
+              isActive: false,
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => const AddTransferDialog(),
+                ).then((_) => _fetchData());
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomBarItem({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    final activeColor = AppTheme.primaryColor;
+    final inactiveColor = Colors.grey.shade400;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isActive ? activeColor : inactiveColor,
+              size: 24,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? activeColor : inactiveColor,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UnifiedTx {
+  final String id;
+  final String title;
+  final double amount;
+  final String currency;
+  final DateTime date;
+  final String project;
+  final String type; // 'expense', 'income', 'transfer'
+  final int originalId;
+  final int? userId;
+
+  _UnifiedTx({
+    required this.id,
+    required this.title,
+    required this.amount,
+    required this.currency,
+    required this.date,
+    required this.project,
+    required this.type,
+    required this.originalId,
+    this.userId,
+  });
 }

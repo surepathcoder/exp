@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../services/api_service.dart';
 import '../utils/currency_converter.dart';
 
@@ -38,8 +38,15 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   Future<void> fetchDashboardData() async {
     state = state.copyWith(isLoading: true);
     try {
-      final rates = await _apiService.getRates();
-      CurrencyConverter.updateRates(rates);
+      try {
+        final rates = await _apiService.getRates();
+        CurrencyConverter.updateRates(rates);
+        if (rates['TZS'] == 2500.0 && rates['KES'] == 130.0) {
+          await CurrencyConverter.fetchFallbackRates();
+        }
+      } catch (e) {
+        await CurrencyConverter.fetchFallbackRates();
+      }
 
       final balances = await _apiService.getBalance();
       final percentage = await _apiService.getSelfReceiptPercentage();

@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../models/system_stats.dart';
 import '../models/audit_log.dart';
 import '../services/settings_api_service.dart';

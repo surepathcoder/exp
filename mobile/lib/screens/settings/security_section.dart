@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../models/system_settings.dart';
 import '../../theme/app_theme.dart';
+
 
 class SecuritySection extends ConsumerStatefulWidget {
   final SystemSettings settings;
@@ -74,6 +76,9 @@ class _SecuritySectionState extends ConsumerState<SecuritySection> {
 
   @override
   Widget build(BuildContext context) {
+    final userState = ref.watch(authProvider);
+    final isSuperAdmin = userState.user?.role.name == 'superadmin';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -101,30 +106,32 @@ class _SecuritySectionState extends ConsumerState<SecuritySection> {
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
               : const Text('Update Password'),
         ),
-        const Divider(height: 32),
-        const Text('Session Timeout', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _timeoutCtrl,
-                decoration: const InputDecoration(labelText: 'Timeout (minutes)', suffixText: 'min'),
-                keyboardType: TextInputType.number,
+        if (isSuperAdmin) ...[
+          const Divider(height: 32),
+          const Text('Session Timeout', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _timeoutCtrl,
+                  decoration: const InputDecoration(labelText: 'Timeout (minutes)', suffixText: 'min'),
+                  keyboardType: TextInputType.number,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            ElevatedButton(
-              onPressed: widget.isSaving ? null : () {
-                widget.onSaveTimeout({
-                  'session_timeout_minutes': int.tryParse(_timeoutCtrl.text) ?? 1440,
-                  'version': widget.settings.version,
-                });
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: widget.isSaving ? null : () {
+                  widget.onSaveTimeout({
+                    'session_timeout_minutes': int.tryParse(_timeoutCtrl.text) ?? 1440,
+                    'version': widget.settings.version,
+                  });
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }

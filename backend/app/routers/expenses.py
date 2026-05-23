@@ -54,10 +54,10 @@ def upload_receipt(
     current_user: User = Depends(get_current_user)
 ):
     file_ext = os.path.splitext(file.filename)[1].lower()
-    if file_ext not in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
+    if file_ext not in [".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid file type. Only image files (JPG, PNG, GIF, WEBP) are allowed."
+            detail="Invalid file type. Only image files (JPG, PNG, GIF, WEBP) and PDF files are allowed."
         )
     
     unique_filename = f"{uuid.uuid4()}{file_ext}"

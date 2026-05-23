@@ -75,14 +75,14 @@ def get_report_preview(
     for inc in incomes:
         c = inc.currency.value if hasattr(inc.currency, 'value') else str(inc.currency)
         if c in summary:
-            summary[c]["inflow"] += inc.amount
-            summary[c]["net"] += inc.amount
+            summary[c]["inflow"] += float(inc.amount)
+            summary[c]["net"] += float(inc.amount)
             
     for exp in expenses:
         c = exp.currency.value if hasattr(exp.currency, 'value') else str(exp.currency)
         if c in summary:
-            summary[c]["outflow"] += exp.amount
-            summary[c]["net"] -= exp.amount
+            summary[c]["outflow"] += float(exp.amount)
+            summary[c]["net"] -= float(exp.amount)
             
     # Compile a preview list (max 5 records)
     preview_items = []
@@ -90,7 +90,7 @@ def get_report_preview(
         preview_items.append({
             "type": "income",
             "date": inc.date.isoformat() if inc.date else None,
-            "amount": inc.amount,
+            "amount": float(inc.amount),
             "currency": inc.currency.value if hasattr(inc.currency, 'value') else str(inc.currency),
             "category_source": inc.source or "Income",
             "user": inc.owner.name if inc.owner else "Unknown",
@@ -100,7 +100,7 @@ def get_report_preview(
         preview_items.append({
             "type": "expense",
             "date": exp.date.isoformat() if exp.date else None,
-            "amount": exp.amount,
+            "amount": float(exp.amount),
             "currency": exp.currency.value if hasattr(exp.currency, 'value') else str(exp.currency),
             "category_source": exp.category or "Expense",
             "user": exp.owner.name if exp.owner else "Unknown",
@@ -112,11 +112,11 @@ def get_report_preview(
         preview_items.append({
             "type": "transfer",
             "date": tx.date.isoformat() if tx.date else None,
-            "amount": tx.amount_from,
+            "amount": float(tx.amount_from),
             "currency": f"{c_from}->{c_to}",
             "category_source": "Transfer",
             "user": tx.owner.name if tx.owner else "Unknown",
-            "details": f"Exchanged to {tx.amount_to} {c_to} | {tx.note or ''}"
+            "details": f"Exchanged to {float(tx.amount_to):,.2f} {c_to} | {tx.note or ''}"
         })
         
     preview_items.sort(key=lambda x: x["date"] or "", reverse=True)

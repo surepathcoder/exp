@@ -1,7 +1,10 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import '../services/profile_api_service.dart';
+import '../utils/currency_converter.dart';
+
 
 class AuthState {
   final User? user;
@@ -33,8 +36,9 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final ApiService _apiService;
+  final ProfileApiService _profileApiService;
 
-  AuthNotifier(this._apiService) : super(AuthState()) {
+  AuthNotifier(this._apiService, this._profileApiService) : super(AuthState()) {
     _loadUser();
   }
 
@@ -45,6 +49,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (token != null) {
         final user = await _apiService.getMe();
         state = state.copyWith(user: user, isAuthenticated: true, isLoading: false);
+        _fetchRates();
       } else {
         state = state.copyWith(isLoading: false);
       }
@@ -63,9 +68,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
       
       await storageService.saveToken(token);
       state = state.copyWith(user: user, isAuthenticated: true, isLoading: false);
+      _fetchRates();
     } catch (e) {
       state = state.copyWith(error: e.toString(), isLoading: false);
       rethrow;
+    }
+  }
+
+  Future<void> _fetchRates() async {
+    try {
+      final rates = await _apiService.getRates();
+      CurrencyConverter.updateRates(rates);
+      if (rates['TZS'] == 2500.0 && rates['KES'] == 130.0) {
+        await CurrencyConverter.fetchFallbackRates();
+      }
+    } catch (e) {
+      await CurrencyConverter.fetchFallbackRates();
     }
   }
 
@@ -95,8 +113,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
       rethrow;
     }
   }
+
+  Future<bool> updateProfile(String name, String email) async {
+    state = state.copyWith(isLoading: true);
+    try {
+      final updatedUser = await _profileApiService.updateProfile(name, email);
+      state = state.copyWith(user: updatedUser, isAuthenticated: true, isLoading: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(error: e.toString(), isLoading: false);
+      return false;
+    }
+  }
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.watch(apiServiceProvider));
+  return AuthNotifier(
+    ref.watch(apiServiceProvider),
+    ref.watch(profileApiProvider),
+  );
 });

@@ -46,10 +46,11 @@ def get_rates_with_settings(db: Session) -> Dict[str, float]:
     settings = db.query(SystemSettings).filter(SystemSettings.id == 1).first()
 
     if settings and not settings.use_live_rates:
+        manual = settings.manual_rates or {}
         return {
             "USD": 1.0,
-            "TZS": settings.manual_rate_usd_tzs,
-            "KES": settings.manual_rate_usd_kes,
+            "TZS": float(manual.get("USD_TZS", 2500.0)),
+            "KES": float(manual.get("USD_KES", 130.0)),
         }
 
     current_time = time.time()

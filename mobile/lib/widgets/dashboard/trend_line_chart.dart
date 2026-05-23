@@ -92,7 +92,7 @@ class _TrendLineChartState extends ConsumerState<TrendLineChart> {
                         borderData: FlBorderData(show: false),
                         lineTouchData: LineTouchData(
                           touchTooltipData: LineTouchTooltipData(
-                            tooltipBgColor: AppTheme.primaryColor.withOpacity(0.9),
+                            getTooltipColor: (touchedSpot) => AppTheme.primaryColor.withOpacity(0.9),
                             getTooltipItems: (touchedSpots) {
                               return touchedSpots.map((touchedSpot) {
                                 return LineTooltipItem(
