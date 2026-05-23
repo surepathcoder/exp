@@ -23,7 +23,7 @@ A complete production-ready expense tracker app with a Flutter frontend and Fast
    ```
 
 The application will be available at:
-- Frontend (Web): http://localhost:8080
+- Frontend (Web): http://localhost:8082
 - Backend API Docs: http://localhost:8000/docs
 
 ### Default Credentials (after initial seed)

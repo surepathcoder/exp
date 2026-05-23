@@ -89,6 +89,16 @@ class AppNavigationDrawer extends ConsumerWidget {
                 ),
                 _buildDrawerItem(
                   context: context,
+                  icon: Icons.assessment_outlined,
+                  label: 'REPORTS',
+                  isSelected: location.startsWith('/reports'),
+                  onTap: () {
+                    if (isDrawer) Navigator.pop(context);
+                    context.go('/reports');
+                  },
+                ),
+                _buildDrawerItem(
+                  context: context,
                   icon: Icons.notifications_none_outlined,
                   label: 'ALERTS',
                   isSelected: location.startsWith('/notifications'),

@@ -6,7 +6,7 @@ from app.middleware.auth_middleware import add_cors_middleware
 from app.routers import (
     auth, expenses, users, dashboard, incomes, transfers,
     notifications, settings, settings_categories, settings_users,
-    settings_stats, settings_audit,
+    settings_stats, settings_audit, reports,
 )
 from app.seed import seed_database
 from app.config import settings as app_settings
@@ -28,6 +28,7 @@ app.include_router(dashboard.router)
 app.include_router(incomes.router)
 app.include_router(transfers.router)
 app.include_router(notifications.router)
+app.include_router(reports.router)
 
 # Settings module routers
 app.include_router(settings.router)
