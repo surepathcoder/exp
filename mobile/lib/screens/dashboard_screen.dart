@@ -15,6 +15,8 @@ import '../widgets/navigation_drawer.dart';
 import '../widgets/add_income_dialog.dart';
 import '../widgets/add_transfer_dialog.dart';
 import '../widgets/currency_exchange_dialog.dart';
+import '../widgets/dashboard/wallet_list.dart';
+import '../providers/wallet_provider.dart';
 
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -36,6 +38,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ref.read(dashboardProvider.notifier).fetchDashboardData(),
       ref.read(expenseProvider.notifier).fetchExpenses(),
       ref.read(incomeProvider.notifier).fetchIncomes(),
+      ref.read(walletProvider.notifier).fetchWallets(),
     ]);
   }
 
@@ -183,6 +186,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   children: const [
                     HeaderSection(),
                     SizedBox(height: 12),
+                    WalletList(),
+                    SizedBox(height: 16),
                     SummaryCards(),
                     SizedBox(height: 16),
                     TrendLineChart(),

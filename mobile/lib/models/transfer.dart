@@ -9,6 +9,8 @@ class Transfer extends Equatable {
   final DateTime date;
   final String? note;
   final int? userId;
+  final int? walletFromId;
+  final int? walletToId;
 
   const Transfer({
     this.id,
@@ -19,18 +21,22 @@ class Transfer extends Equatable {
     required this.date,
     this.note,
     this.userId,
+    this.walletFromId,
+    this.walletToId,
   });
 
   factory Transfer.fromJson(Map<String, dynamic> json) {
     return Transfer(
       id: json['id'],
-      amountFrom: json['amount_from'].toDouble(),
+      amountFrom: _parseAmount(json['amount_from']),
       currencyFrom: json['currency_from'],
-      amountTo: json['amount_to'].toDouble(),
+      amountTo: _parseAmount(json['amount_to']),
       currencyTo: json['currency_to'],
       date: DateTime.parse(json['date']),
       note: json['note'],
       userId: json['user_id'],
+      walletFromId: json['wallet_from_id'],
+      walletToId: json['wallet_to_id'],
     );
   }
 
@@ -44,6 +50,8 @@ class Transfer extends Equatable {
       'date': date.toIso8601String(),
       'note': note,
       if (userId != null) 'user_id': userId,
+      if (walletFromId != null) 'wallet_from_id': walletFromId,
+      if (walletToId != null) 'wallet_to_id': walletToId,
     };
   }
 
@@ -56,6 +64,8 @@ class Transfer extends Equatable {
     DateTime? date,
     String? note,
     int? userId,
+    int? walletFromId,
+    int? walletToId,
   }) {
     return Transfer(
       id: id ?? this.id,
@@ -66,6 +76,8 @@ class Transfer extends Equatable {
       date: date ?? this.date,
       note: note ?? this.note,
       userId: userId ?? this.userId,
+      walletFromId: walletFromId ?? this.walletFromId,
+      walletToId: walletToId ?? this.walletToId,
     );
   }
 
@@ -79,5 +91,14 @@ class Transfer extends Equatable {
         date,
         note,
         userId,
+        walletFromId,
+        walletToId,
       ];
+}
+
+double _parseAmount(dynamic val) {
+  if (val == null) return 0.0;
+  if (val is num) return val.toDouble();
+  if (val is String) return double.tryParse(val) ?? 0.0;
+  return 0.0;
 }

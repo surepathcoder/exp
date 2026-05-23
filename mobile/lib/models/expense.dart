@@ -14,6 +14,7 @@ class Expense extends Equatable {
   final String? project;
   final String? photoUrl;
   final int? userId;
+  final int? walletId;
 
   const Expense({
     this.id,
@@ -29,12 +30,13 @@ class Expense extends Equatable {
     this.project = 'Operations',
     this.photoUrl,
     this.userId,
+    this.walletId,
   });
 
   factory Expense.fromJson(Map<String, dynamic> json) {
     return Expense(
       id: json['id'],
-      amount: json['amount'].toDouble(),
+      amount: _parseAmount(json['amount']),
       currency: json['currency'],
       category: json['category'],
       date: DateTime.parse(json['date']),
@@ -46,6 +48,7 @@ class Expense extends Equatable {
       project: json['project'] ?? 'Operations',
       photoUrl: json['photo_url'],
       userId: json['user_id'],
+      walletId: json['wallet_id'],
     );
   }
 
@@ -64,6 +67,7 @@ class Expense extends Equatable {
       'project': project ?? 'Operations',
       'photo_url': photoUrl,
       if (userId != null) 'user_id': userId,
+      if (walletId != null) 'wallet_id': walletId,
     };
   }
 
@@ -81,6 +85,7 @@ class Expense extends Equatable {
     String? project,
     String? photoUrl,
     int? userId,
+    int? walletId,
   }) {
     return Expense(
       id: id ?? this.id,
@@ -96,6 +101,7 @@ class Expense extends Equatable {
       project: project ?? this.project,
       photoUrl: photoUrl ?? this.photoUrl,
       userId: userId ?? this.userId,
+      walletId: walletId ?? this.walletId,
     );
   }
 
@@ -114,5 +120,13 @@ class Expense extends Equatable {
         project,
         photoUrl,
         userId,
+        walletId,
       ];
+}
+
+double _parseAmount(dynamic val) {
+  if (val == null) return 0.0;
+  if (val is num) return val.toDouble();
+  if (val is String) return double.tryParse(val) ?? 0.0;
+  return 0.0;
 }

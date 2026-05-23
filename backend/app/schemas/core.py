@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
 from typing import Optional, List
+from decimal import Decimal
 from app.models import RoleEnum, CurrencyEnum
 
 
@@ -24,7 +25,7 @@ class UserResponse(UserBase):
 
 
 class ExpenseBase(BaseModel):
-    amount: float
+    amount: Decimal
     currency: CurrencyEnum
     category: str
     date: datetime
@@ -35,6 +36,7 @@ class ExpenseBase(BaseModel):
     vendor: Optional[str] = None
     project: Optional[str] = 'Operations'
     photo_url: Optional[str] = None
+    wallet_id: Optional[int] = None
 
 
 class ExpenseCreate(ExpenseBase):
@@ -60,11 +62,12 @@ class LoginRequest(BaseModel):
 
 
 class IncomeBase(BaseModel):
-    amount: float
+    amount: Decimal
     currency: CurrencyEnum
     source: str
     date: datetime
     note: Optional[str] = None
+    wallet_id: Optional[int] = None
 
 
 class IncomeCreate(IncomeBase):
@@ -80,12 +83,14 @@ class IncomeResponse(IncomeBase):
 
 
 class TransferBase(BaseModel):
-    amount_from: float
+    amount_from: Decimal
     currency_from: CurrencyEnum
-    amount_to: float
+    amount_to: Decimal
     currency_to: CurrencyEnum
     date: datetime
     note: Optional[str] = None
+    wallet_from_id: Optional[int] = None
+    wallet_to_id: Optional[int] = None
 
 
 class TransferCreate(TransferBase):

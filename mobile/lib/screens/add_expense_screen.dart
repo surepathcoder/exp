@@ -15,6 +15,7 @@ import '../theme/app_theme.dart';
 import '../providers/category_provider.dart';
 import '../utils/color_parser.dart';
 import '../utils/category_icons.dart';
+import '../providers/wallet_provider.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
   final int? expenseId;
@@ -33,6 +34,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   String _selectedPaymentMethod = 'Cash';
   DateTime _selectedDate = DateTime.now();
   bool _isSelfReceipt = false;
+  int? _selectedWalletId;
   
   final _amountController = TextEditingController();
   final _locationController = TextEditingController();
@@ -62,6 +64,16 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           });
         }
       });
+      ref.read(walletProvider.notifier).fetchWallets().then((_) {
+        if (!_isEditing) {
+          final matching = ref.read(walletProvider).wallets.where((w) => w.currency == _selectedCurrency).toList();
+          if (matching.isNotEmpty) {
+            setState(() {
+              _selectedWalletId = matching.first.id;
+            });
+          }
+        }
+      });
     });
     if (widget.expenseId != null) {
       _isEditing = true;
@@ -80,6 +92,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         _selectedPaymentMethod = _existingExpense!.paymentMethod ?? 'Cash';
         _selectedDate = _existingExpense!.date;
         _isSelfReceipt = _existingExpense!.isSelfReceipt;
+        _selectedWalletId = _existingExpense!.walletId;
         
         _amountController.text = _existingExpense!.amount.toString();
         _locationController.text = _existingExpense!.location ?? '';
@@ -198,6 +211,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         project: _projectController.text.trim().isNotEmpty ? _projectController.text.trim() : 'Operations',
         photoUrl: photoUrl,
         userId: _existingExpense?.userId,
+        walletId: _selectedWalletId,
       );
 
       try {
@@ -372,10 +386,49 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                     flex: 1,
                     child: CurrencyPicker(
                       selectedCurrency: _selectedCurrency,
-                      onChanged: (val) => setState(() => _selectedCurrency = val!),
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedCurrency = val!;
+                          final matching = ref.read(walletProvider).wallets
+                              .where((w) => w.currency == _selectedCurrency)
+                              .toList();
+                          if (matching.isNotEmpty) {
+                            _selectedWalletId = matching.first.id;
+                          } else {
+                            _selectedWalletId = null;
+                          }
+                        });
+                      },
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              Consumer(
+                builder: (context, ref, child) {
+                  final walletsState = ref.watch(walletProvider);
+                  final filteredWallets = walletsState.wallets
+                      .where((w) => w.currency == _selectedCurrency)
+                      .toList();
+                  
+                  return DropdownButtonFormField<int?>(
+                    value: _selectedWalletId,
+                    decoration: const InputDecoration(
+                      labelText: 'Deduct From Account / Wallet',
+                    ),
+                    items: [
+                      const DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('No Account (Generic Balance)'),
+                      ),
+                      ...filteredWallets.map((w) => DropdownMenuItem<int?>(
+                        value: w.id,
+                        child: Text('${w.name} (${w.currency})'),
+                      )),
+                    ],
+                    onChanged: (val) => setState(() => _selectedWalletId = val),
+                  );
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(

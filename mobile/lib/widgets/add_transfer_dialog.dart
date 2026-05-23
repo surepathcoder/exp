@@ -7,6 +7,7 @@ import '../providers/dashboard_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/constants.dart';
 import '../utils/currency_converter.dart';
+import '../providers/wallet_provider.dart';
 
 class AddTransferDialog extends ConsumerStatefulWidget {
   const AddTransferDialog({super.key});
@@ -26,11 +27,24 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
   bool _isAutoCalculating = true;
+  int? _selectedWalletFromId;
+  int? _selectedWalletToId;
 
   @override
   void initState() {
     super.initState();
     _amountFromController.addListener(_onAmountFromChanged);
+    Future.microtask(() {
+      ref.read(walletProvider.notifier).fetchWallets().then((_) {
+        final wallets = ref.read(walletProvider).wallets;
+        final matchingFrom = wallets.where((w) => w.currency == _selectedCurrencyFrom).toList();
+        final matchingTo = wallets.where((w) => w.currency == _selectedCurrencyTo).toList();
+        setState(() {
+          if (matchingFrom.isNotEmpty) _selectedWalletFromId = matchingFrom.first.id;
+          if (matchingTo.isNotEmpty) _selectedWalletToId = matchingTo.first.id;
+        });
+      });
+    });
   }
 
   @override
@@ -91,6 +105,8 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
       currencyTo: _selectedCurrencyTo,
       date: _selectedDate,
       note: _noteController.text.isNotEmpty ? _noteController.text : null,
+      walletFromId: _selectedWalletFromId,
+      walletToId: _selectedWalletToId,
     );
 
     try {
@@ -167,11 +183,47 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
                         setState(() {
                           _selectedCurrencyFrom = val!;
                           _recalculate();
+                          final matching = ref.read(walletProvider).wallets
+                              .where((w) => w.currency == _selectedCurrencyFrom)
+                              .toList();
+                          if (matching.isNotEmpty) {
+                            _selectedWalletFromId = matching.first.id;
+                          } else {
+                            _selectedWalletFromId = null;
+                          }
                         });
                       },
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              Consumer(
+                builder: (context, ref, child) {
+                  final walletsState = ref.watch(walletProvider);
+                  final filteredWallets = walletsState.wallets
+                      .where((w) => w.currency == _selectedCurrencyFrom)
+                      .toList();
+                  
+                  return DropdownButtonFormField<int?>(
+                    value: _selectedWalletFromId,
+                    decoration: const InputDecoration(
+                      labelText: 'Source Account / Wallet',
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: [
+                      const DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('No Account (Generic Balance)'),
+                      ),
+                      ...filteredWallets.map((w) => DropdownMenuItem<int?>(
+                        value: w.id,
+                        child: Text('${w.name} (${w.currency})'),
+                      )),
+                    ],
+                    onChanged: (val) => setState(() => _selectedWalletFromId = val),
+                  );
+                },
               ),
               const SizedBox(height: 16),
               const Text('Destination Wallet', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
@@ -230,11 +282,47 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
                         setState(() {
                           _selectedCurrencyTo = val!;
                           _recalculate();
+                          final matching = ref.read(walletProvider).wallets
+                              .where((w) => w.currency == _selectedCurrencyTo)
+                              .toList();
+                          if (matching.isNotEmpty) {
+                            _selectedWalletToId = matching.first.id;
+                          } else {
+                            _selectedWalletToId = null;
+                          }
                         });
                       },
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              Consumer(
+                builder: (context, ref, child) {
+                  final walletsState = ref.watch(walletProvider);
+                  final filteredWallets = walletsState.wallets
+                      .where((w) => w.currency == _selectedCurrencyTo)
+                      .toList();
+                  
+                  return DropdownButtonFormField<int?>(
+                    value: _selectedWalletToId,
+                    decoration: const InputDecoration(
+                      labelText: 'Destination Account / Wallet',
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: [
+                      const DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('No Account (Generic Balance)'),
+                      ),
+                      ...filteredWallets.map((w) => DropdownMenuItem<int?>(
+                        value: w.id,
+                        child: Text('${w.name} (${w.currency})'),
+                      )),
+                    ],
+                    onChanged: (val) => setState(() => _selectedWalletToId = val),
+                  );
+                },
               ),
               const SizedBox(height: 16),
               InkWell(

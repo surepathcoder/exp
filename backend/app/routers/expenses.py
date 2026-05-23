@@ -10,9 +10,28 @@ import shutil
 from app.database import get_db
 from app.schemas import ExpenseCreate, ExpenseResponse, ExpenseBase
 from app.models import Expense, User, RoleEnum
+from app.models.wallet import Wallet
 from app.auth import get_current_user
 from app.utils.notification_helper import create_notification, check_and_trigger_balance_warning
 from app.utils.export_helpers import generate_csv, generate_pdf
+from app.utils.wallet_sync import sync_wallet_balance
+
+def _validate_wallet_currency(db: Session, wallet_id: Optional[int], transaction_currency: str, current_user: User):
+    if wallet_id is None:
+        return
+    wallet = db.query(Wallet).filter(Wallet.id == wallet_id).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    if current_user.role == RoleEnum.user and wallet.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to use this wallet")
+    if not wallet.is_active:
+        raise HTTPException(status_code=400, detail="Wallet is archived and cannot receive new transactions")
+    w_curr = wallet.currency.value if hasattr(wallet.currency, 'value') else str(wallet.currency)
+    if w_curr != transaction_currency:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Transaction currency {transaction_currency} does not match wallet currency {w_curr}"
+        )
 
 
 router = APIRouter(prefix="/api/expenses", tags=["expenses"])
@@ -231,11 +250,15 @@ async def create_expense(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    _validate_wallet_currency(db, expense_in.wallet_id, expense_in.currency.value, current_user)
     new_expense = Expense(**expense_in.model_dump(), user_id=current_user.id)
     db.add(new_expense)
     db.commit()
     db.refresh(new_expense)
     
+    if new_expense.wallet_id:
+        sync_wallet_balance(db, new_expense.wallet_id)
+        
     await create_notification(
         db=db,
         title="New Expense Added",
@@ -265,8 +288,17 @@ def update_expense(
     if current_user.role == RoleEnum.user and expense.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this expense")
         
+    old_wallet_id = expense.wallet_id
+    _validate_wallet_currency(db, expense_in.wallet_id, expense_in.currency.value, current_user)
+    
     expense_query.update(expense_in.model_dump(), synchronize_session=False)
     db.commit()
+    
+    if expense_in.wallet_id:
+        sync_wallet_balance(db, expense_in.wallet_id)
+    if old_wallet_id and old_wallet_id != expense_in.wallet_id:
+        sync_wallet_balance(db, old_wallet_id)
+        
     return expense_query.first()
 
 @router.delete("/{expense_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -283,5 +315,9 @@ def delete_expense(
     if current_user.role == RoleEnum.user and expense.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to delete this expense")
         
+    wallet_id = expense.wallet_id
     db.delete(expense)
     db.commit()
+    
+    if wallet_id:
+        sync_wallet_balance(db, wallet_id)

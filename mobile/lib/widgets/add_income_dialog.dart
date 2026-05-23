@@ -6,6 +6,7 @@ import '../providers/income_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/constants.dart';
+import '../providers/wallet_provider.dart';
 
 class AddIncomeDialog extends ConsumerStatefulWidget {
   const AddIncomeDialog({super.key});
@@ -23,8 +24,26 @@ class _AddIncomeDialogState extends ConsumerState<AddIncomeDialog> {
   String _selectedSource = 'Salary';
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
+  int? _selectedWalletId;
 
   final List<String> _sources = ['Salary', 'Donation', 'Investment', 'Refund', 'Other'];
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.read(walletProvider.notifier).fetchWallets().then((_) {
+        final matching = ref.read(walletProvider).wallets
+            .where((w) => w.currency == _selectedCurrency)
+            .toList();
+        if (matching.isNotEmpty) {
+          setState(() {
+            _selectedWalletId = matching.first.id;
+          });
+        }
+      });
+    });
+  }
 
   @override
   void dispose() {
@@ -58,6 +77,7 @@ class _AddIncomeDialogState extends ConsumerState<AddIncomeDialog> {
       source: _selectedSource,
       date: _selectedDate,
       note: _noteController.text.isNotEmpty ? _noteController.text : null,
+      walletId: _selectedWalletId,
     );
 
     try {
@@ -128,10 +148,50 @@ class _AddIncomeDialogState extends ConsumerState<AddIncomeDialog> {
                         value: curr,
                         child: Text(curr),
                       )).toList(),
-                      onChanged: (val) => setState(() => _selectedCurrency = val!),
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedCurrency = val!;
+                          final matching = ref.read(walletProvider).wallets
+                              .where((w) => w.currency == _selectedCurrency)
+                              .toList();
+                          if (matching.isNotEmpty) {
+                            _selectedWalletId = matching.first.id;
+                          } else {
+                            _selectedWalletId = null;
+                          }
+                        });
+                      },
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              Consumer(
+                builder: (context, ref, child) {
+                  final walletsState = ref.watch(walletProvider);
+                  final filteredWallets = walletsState.wallets
+                      .where((w) => w.currency == _selectedCurrency)
+                      .toList();
+                  
+                  return DropdownButtonFormField<int?>(
+                    value: _selectedWalletId,
+                    decoration: const InputDecoration(
+                      labelText: 'Deposit To Account / Wallet',
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: [
+                      const DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('No Account (Generic Balance)'),
+                      ),
+                      ...filteredWallets.map((w) => DropdownMenuItem<int?>(
+                        value: w.id,
+                        child: Text('${w.name} (${w.currency})'),
+                      )),
+                    ],
+                    onChanged: (val) => setState(() => _selectedWalletId = val),
+                  );
+                },
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(

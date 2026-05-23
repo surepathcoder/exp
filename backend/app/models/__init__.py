@@ -5,6 +5,7 @@ from app.models.notification import Notification, UserNotification
 from app.models.system_settings import SystemSettings
 from app.models.category import Category
 from app.models.audit_log import AuditLog
+from app.models.wallet import WalletTypeEnum, Wallet
 
 __all__ = [
     "Base",
@@ -12,4 +13,5 @@ __all__ = [
     "User", "Expense", "Income", "Transfer",
     "Notification", "UserNotification",
     "SystemSettings", "Category", "AuditLog",
+    "WalletTypeEnum", "Wallet",
 ]
