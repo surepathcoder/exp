@@ -10,12 +10,10 @@ import '../providers/expense_provider.dart';
 import '../services/api_service.dart';
 import '../utils/constants.dart';
 import '../utils/validators.dart';
-import '../widgets/category_chip.dart';
+import '../widgets/category_selector.dart';
 import '../widgets/currency_picker.dart';
 import '../theme/app_theme.dart';
 import '../providers/category_provider.dart';
-import '../utils/color_parser.dart';
-import '../utils/category_icons.dart';
 import '../providers/wallet_provider.dart';
 import '../models/project.dart';
 import '../providers/project_provider.dart';
@@ -353,62 +351,12 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 }).toList(),
                 onChanged: (val) => setState(() => _selectedPaymentMethod = val!),
               ),
-              const SizedBox(height: 24),
-              const Text(
-                'Category',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Consumer(
-                builder: (context, ref, child) {
-                  final catsState = ref.watch(categoryProvider);
-                  final expenseCats = catsState.categories
-                      .where((c) => c.isActive && c.type == 'expense')
-                      .toList();
-
-                  if (catsState.isLoading && expenseCats.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Center(child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator())),
-                    );
-                  }
-
-                  if (expenseCats.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Text('No categories available'),
-                    );
-                  }
-
-                  // If selected category is empty, default to first category
-                  if (_selectedCategory.isEmpty) {
-                    Future.microtask(() {
-                      setState(() {
-                        _selectedCategory = expenseCats.first.name;
-                      });
-                    });
-                  }
-
-                  return Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: expenseCats.map((category) {
-                      final parsedColor = ColorParser.fromHex(category.color);
-                      final iconData = CategoryIconHelper.getIcon(category.icon);
-
-                      return CategoryChip(
-                        label: category.name,
-                        icon: iconData,
-                        color: parsedColor,
-                        isSelected: _selectedCategory == category.name,
-                        onSelected: (selected) {
-                          if (selected) {
-                            setState(() => _selectedCategory = category.name);
-                          }
-                        },
-                      );
-                    }).toList(),
-                  );
+              CategorySelector(
+                selectedCategoryName: _selectedCategory,
+                onSelected: (category) {
+                  setState(() {
+                    _selectedCategory = category.name;
+                  });
                 },
               ),
               const SizedBox(height: 24),

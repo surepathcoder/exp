@@ -16,6 +16,7 @@ import '../theme/app_theme.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/add_income_dialog.dart';
 import '../widgets/add_transfer_dialog.dart';
+import '../widgets/transaction_details_dialog.dart';
 import '../utils/downloader.dart';
 import '../utils/color_parser.dart';
 import '../utils/category_icons.dart';
@@ -1250,13 +1251,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           ],
         ),
         onTap: () {
-          if (tx.type == 'expense') {
-            context.go('/expenses/edit', extra: tx.originalId);
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Details for ${tx.type} can be viewed on Dashboard')),
-            );
-          }
+          TransactionDetailsDialog.show(context, tx.type, tx.originalId);
         },
       ),
     );

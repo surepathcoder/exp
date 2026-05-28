@@ -12,7 +12,8 @@ import '../providers/project_provider.dart';
 import '../widgets/project_selector.dart';
 
 class AddIncomeDialog extends ConsumerStatefulWidget {
-  const AddIncomeDialog({super.key});
+  final Income? income;
+  const AddIncomeDialog({super.key, this.income});
 
   @override
   ConsumerState<AddIncomeDialog> createState() => _AddIncomeDialogState();
@@ -37,16 +38,28 @@ class _AddIncomeDialogState extends ConsumerState<AddIncomeDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedProjectId = _lastUsedProjectId;
+    if (widget.income != null) {
+      _amountController.text = widget.income!.amount.toString();
+      _noteController.text = widget.income!.note ?? '';
+      _selectedCurrency = widget.income!.currency;
+      _selectedSource = widget.income!.source;
+      _selectedDate = widget.income!.date;
+      _selectedWalletId = widget.income!.walletId;
+      _selectedProjectId = widget.income!.projectId;
+    } else {
+      _selectedProjectId = _lastUsedProjectId;
+    }
     Future.microtask(() {
       ref.read(walletProvider.notifier).fetchWallets().then((_) {
-        final matching = ref.read(walletProvider).wallets
-            .where((w) => w.currency == _selectedCurrency)
-            .toList();
-        if (matching.isNotEmpty) {
-          setState(() {
-            _selectedWalletId = matching.first.id;
-          });
+        if (widget.income == null) {
+          final matching = ref.read(walletProvider).wallets
+              .where((w) => w.currency == _selectedCurrency)
+              .toList();
+          if (matching.isNotEmpty) {
+            setState(() {
+              _selectedWalletId = matching.first.id;
+            });
+          }
         }
       });
     });
@@ -97,7 +110,11 @@ class _AddIncomeDialogState extends ConsumerState<AddIncomeDialog> {
     );
 
     try {
-      await ref.read(incomeProvider.notifier).addIncome(income);
+      if (widget.income != null) {
+        await ref.read(incomeProvider.notifier).updateIncome(widget.income!.id!, income);
+      } else {
+        await ref.read(incomeProvider.notifier).addIncome(income);
+      }
       // Refresh dashboard balance
       await ref.read(dashboardProvider.notifier).fetchDashboardData();
       
@@ -105,13 +122,13 @@ class _AddIncomeDialogState extends ConsumerState<AddIncomeDialog> {
         _lastUsedProjectId = _selectedProjectId;
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Income added successfully')),
+          SnackBar(content: Text(widget.income != null ? 'Income updated successfully' : 'Income added successfully')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error adding income: $e'), backgroundColor: AppTheme.errorColor),
+          SnackBar(content: Text('Error saving income: $e'), backgroundColor: AppTheme.errorColor),
         );
       }
     } finally {
@@ -124,7 +141,7 @@ class _AddIncomeDialogState extends ConsumerState<AddIncomeDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('New Income', style: TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(widget.income != null ? 'Edit Income' : 'New Income', style: const TextStyle(fontWeight: FontWeight.bold)),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,

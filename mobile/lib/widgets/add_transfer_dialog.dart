@@ -13,7 +13,8 @@ import '../providers/project_provider.dart';
 import '../widgets/project_selector.dart';
 
 class AddTransferDialog extends ConsumerStatefulWidget {
-  const AddTransferDialog({super.key});
+  final Transfer? transfer;
+  const AddTransferDialog({super.key, this.transfer});
 
   @override
   ConsumerState<AddTransferDialog> createState() => _AddTransferDialogState();
@@ -39,17 +40,32 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedProjectId = _lastUsedProjectId;
+    if (widget.transfer != null) {
+      _amountFromController.text = widget.transfer!.amountFrom.toString();
+      _amountToController.text = widget.transfer!.amountTo.toString();
+      _noteController.text = widget.transfer!.note ?? '';
+      _selectedCurrencyFrom = widget.transfer!.currencyFrom;
+      _selectedCurrencyTo = widget.transfer!.currencyTo;
+      _selectedDate = widget.transfer!.date;
+      _selectedWalletFromId = widget.transfer!.walletFromId;
+      _selectedWalletToId = widget.transfer!.walletToId;
+      _selectedProjectId = widget.transfer!.projectId;
+      _isAutoCalculating = false; // Don't overwrite what was saved
+    } else {
+      _selectedProjectId = _lastUsedProjectId;
+    }
     _amountFromController.addListener(_onAmountFromChanged);
     Future.microtask(() {
       ref.read(walletProvider.notifier).fetchWallets().then((_) {
-        final wallets = ref.read(walletProvider).wallets;
-        final matchingFrom = wallets.where((w) => w.currency == _selectedCurrencyFrom).toList();
-        final matchingTo = wallets.where((w) => w.currency == _selectedCurrencyTo).toList();
-        setState(() {
-          if (matchingFrom.isNotEmpty) _selectedWalletFromId = matchingFrom.first.id;
-          if (matchingTo.isNotEmpty) _selectedWalletToId = matchingTo.first.id;
-        });
+        if (widget.transfer == null) {
+          final wallets = ref.read(walletProvider).wallets;
+          final matchingFrom = wallets.where((w) => w.currency == _selectedCurrencyFrom).toList();
+          final matchingTo = wallets.where((w) => w.currency == _selectedCurrencyTo).toList();
+          setState(() {
+            if (matchingFrom.isNotEmpty) _selectedWalletFromId = matchingFrom.first.id;
+            if (matchingTo.isNotEmpty) _selectedWalletToId = matchingTo.first.id;
+          });
+        }
       });
     });
   }
@@ -126,7 +142,11 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
     );
 
     try {
-      await ref.read(transferProvider.notifier).addTransfer(transfer);
+      if (widget.transfer != null) {
+        await ref.read(transferProvider.notifier).updateTransfer(widget.transfer!.id!, transfer);
+      } else {
+        await ref.read(transferProvider.notifier).addTransfer(transfer);
+      }
       // Refresh dashboard balance
       await ref.read(dashboardProvider.notifier).fetchDashboardData();
       
@@ -134,7 +154,7 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
         _lastUsedProjectId = _selectedProjectId;
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Transfer recorded successfully')),
+          SnackBar(content: Text(widget.transfer != null ? 'Transfer updated successfully' : 'Transfer recorded successfully')),
         );
       }
     } catch (e) {
@@ -153,7 +173,7 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('New Transfer', style: TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(widget.transfer != null ? 'Edit Transfer' : 'New Transfer', style: const TextStyle(fontWeight: FontWeight.bold)),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,

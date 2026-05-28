@@ -8,6 +8,7 @@ import '../../providers/category_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/category_icons.dart';
 import '../../utils/color_parser.dart';
+import '../transaction_details_dialog.dart';
 
 class RecentTransactionsSection extends ConsumerWidget {
   const RecentTransactionsSection({super.key});
@@ -136,13 +137,7 @@ class RecentTransactionsSection extends ConsumerWidget {
                       ),
                     ),
                     onTap: () {
-                      if (tx.isExpense) {
-                        context.go('/expenses/edit', extra: tx.originalId);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Income details can only be deleted via swipe.')),
-                        );
-                      }
+                      TransactionDetailsDialog.show(context, tx.isExpense ? 'expense' : 'income', tx.originalId);
                     },
                   ),
                 ),
