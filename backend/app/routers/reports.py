@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.database import get_db
-from app.models import Expense, Income, Transfer, User, RoleEnum
+from app.models import Expense, Income, Transfer, User, RoleEnum, Project
 from app.auth import get_current_user
 from app.routers.expenses import _get_filtered_expenses_query
 from app.utils.report_pdf_helper import generate_pdf_report
@@ -12,7 +12,7 @@ from app.utils.report_csv_helper import generate_csv_report
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
-def _get_incomes_query(db: Session, current_user: User, start_date, end_date, user_id):
+def _get_incomes_query(db: Session, current_user: User, start_date, end_date, user_id, project=None):
     query = db.query(Income)
     if current_user.role == RoleEnum.user:
         query = query.filter(Income.user_id == current_user.id)
@@ -22,9 +22,11 @@ def _get_incomes_query(db: Session, current_user: User, start_date, end_date, us
         query = query.filter(Income.date >= start_date)
     if end_date:
         query = query.filter(Income.date <= end_date)
+    if project:
+        query = query.join(Income.project_relation).filter(Project.name.in_(project))
     return query
 
-def _get_transfers_query(db: Session, current_user: User, start_date, end_date, user_id):
+def _get_transfers_query(db: Session, current_user: User, start_date, end_date, user_id, project=None):
     query = db.query(Transfer)
     if current_user.role == RoleEnum.user:
         query = query.filter(Transfer.user_id == current_user.id)
@@ -34,6 +36,8 @@ def _get_transfers_query(db: Session, current_user: User, start_date, end_date, 
         query = query.filter(Transfer.date >= start_date)
     if end_date:
         query = query.filter(Transfer.date <= end_date)
+    if project:
+        query = query.join(Transfer.project_relation).filter(Project.name.in_(project))
     return query
 
 def _get_report_data(db: Session, current_user: User, report_type, start_date, end_date, category, user_id, project, search):
@@ -45,10 +49,10 @@ def _get_report_data(db: Session, current_user: User, report_type, start_date, e
         ).all()
         
     if report_type in ['combined', 'incomes']:
-        incomes = _get_incomes_query(db, current_user, start_date, end_date, user_id).all()
+        incomes = _get_incomes_query(db, current_user, start_date, end_date, user_id, project=project).all()
         
     if report_type in ['combined', 'transfers']:
-        transfers = _get_transfers_query(db, current_user, start_date, end_date, user_id).all()
+        transfers = _get_transfers_query(db, current_user, start_date, end_date, user_id, project=project).all()
         
     return expenses, incomes, transfers
 

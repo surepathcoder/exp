@@ -5,9 +5,11 @@ from sqlalchemy import func
 import time
 import urllib.request
 import json
+from decimal import Decimal
+from datetime import datetime
 
 from app.database import get_db
-from app.models import Expense, User, RoleEnum, Income, Transfer, SystemSettings
+from app.models import Expense, User, RoleEnum, Income, Transfer, SystemSettings, Project, ProjectStatusEnum
 from app.auth import get_current_user
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -133,3 +135,76 @@ def get_self_receipt_percentage(
     self_receipts = query.filter(Expense.is_self_receipt == True).count()
     percentage = (self_receipts / total_expenses) * 100
     return {"percentage": round(percentage, 1)}
+
+
+def convert_currency(amount: Decimal, from_curr: str, to_curr: str, rates: dict) -> Decimal:
+    """Helper to convert amount between currencies using USD as base."""
+    if from_curr == to_curr:
+        return amount
+    
+    # Convert to USD first
+    rate_from = Decimal(str(rates.get(from_curr, 1.0)))
+    usd_amount = amount / rate_from
+    
+    # Convert USD to target
+    rate_to = Decimal(str(rates.get(to_curr, 1.0)))
+    return usd_amount * rate_to
+
+
+@router.get("/projects")
+def get_dashboard_projects(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Fetch active and upcoming projects
+    projects = db.query(Project).filter(
+        Project.status.in_([ProjectStatusEnum.active, ProjectStatusEnum.upcoming])
+    ).all()
+    
+    rates = get_rates_with_settings(db)
+    
+    active_list = []
+    expiring_list = []
+    now = datetime.utcnow()
+    
+    for project in projects:
+        proj_currency = project.currency.value if hasattr(project.currency, 'value') else str(project.currency)
+        
+        # Calculate total expenses linked to project (with currency conversion!)
+        expenses = db.query(Expense).filter(Expense.project_id == project.id).all()
+        total_expenses = Decimal("0.00")
+        for exp in expenses:
+            exp_curr = exp.currency.value if hasattr(exp.currency, 'value') else str(exp.currency)
+            converted = convert_currency(Decimal(str(exp.amount)), exp_curr, proj_currency, rates)
+            total_expenses += converted
+            
+        proj_budget = project.budget if project.budget is not None else Decimal("0.00")
+        remaining_balance = proj_budget - total_expenses
+        
+        project_data = {
+            "id": project.id,
+            "name": project.name,
+            "description": project.description,
+            "budget": float(proj_budget),
+            "currency": proj_currency,
+            "status": project.status.value,
+            "start_date": project.start_date.isoformat() if project.start_date else None,
+            "end_date": project.end_date.isoformat() if project.end_date else None,
+            "total_expenses": float(total_expenses),
+            "remaining_balance": float(remaining_balance),
+        }
+        
+        active_list.append(project_data)
+        
+        # If project is expiring soon (e.g. within 30 days)
+        if project.end_date:
+            days_remaining = (project.end_date - now).days
+            if -30 <= days_remaining <= 30:
+                project_data_copy = project_data.copy()
+                project_data_copy["days_remaining"] = days_remaining
+                expiring_list.append(project_data_copy)
+                
+    return {
+        "active_projects": active_list,
+        "expiring_projects": expiring_list,
+    }

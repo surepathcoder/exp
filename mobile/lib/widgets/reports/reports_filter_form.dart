@@ -5,6 +5,7 @@ import '../../providers/reports_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/project_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/category_icons.dart';
 
@@ -12,8 +13,11 @@ class ReportsFilterForm extends ConsumerWidget {
   const ReportsFilterForm({super.key});
 
   List<String> _getUniqueProjects(WidgetRef ref) {
-    // Return a default set of projects
-    return ['Operations', 'Missions', 'Worship Night', 'Youth Camp'].toList()..sort();
+    final projects = ref.watch(projectProvider).projects.map((p) => p.name).toList();
+    if (projects.isEmpty) {
+      return ['Operations', 'Missions', 'Worship Night', 'Youth Camp'].toList()..sort();
+    }
+    return projects..sort();
   }
 
   @override

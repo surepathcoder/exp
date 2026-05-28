@@ -34,7 +34,8 @@ class ExpenseBase(BaseModel):
     payment_method: Optional[str] = None
     location: Optional[str] = None
     vendor: Optional[str] = None
-    project: Optional[str] = 'Operations'
+    project: Optional[str] = None
+    project_id: Optional[int] = None
     photo_url: Optional[str] = None
     wallet_id: Optional[int] = None
 
@@ -68,6 +69,8 @@ class IncomeBase(BaseModel):
     date: datetime
     note: Optional[str] = None
     wallet_id: Optional[int] = None
+    project_id: Optional[int] = None
+    project: Optional[str] = None
 
 
 class IncomeCreate(IncomeBase):
@@ -91,6 +94,8 @@ class TransferBase(BaseModel):
     note: Optional[str] = None
     wallet_from_id: Optional[int] = None
     wallet_to_id: Optional[int] = None
+    project_id: Optional[int] = None
+    project: Optional[str] = None
 
 
 class TransferCreate(TransferBase):

@@ -35,6 +35,8 @@ class TransferNotifier extends StateNotifier<TransferState> {
     String? startDate,
     String? endDate,
     int? userId,
+    List<String>? projects,
+    int? projectId,
   }) async {
     state = state.copyWith(isLoading: true);
     try {
@@ -42,6 +44,8 @@ class TransferNotifier extends StateNotifier<TransferState> {
         startDate: startDate,
         endDate: endDate,
         userId: userId,
+        projects: projects,
+        projectId: projectId,
       );
       state = state.copyWith(transfers: transfers, isLoading: false);
     } catch (e) {

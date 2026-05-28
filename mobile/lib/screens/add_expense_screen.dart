@@ -17,6 +17,9 @@ import '../providers/category_provider.dart';
 import '../utils/color_parser.dart';
 import '../utils/category_icons.dart';
 import '../providers/wallet_provider.dart';
+import '../models/project.dart';
+import '../providers/project_provider.dart';
+import '../widgets/project_selector.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
   final int? expenseId;
@@ -28,6 +31,8 @@ class AddExpenseScreen extends ConsumerStatefulWidget {
 }
 
 class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
+  static int? _lastUsedProjectId;
+
   final _formKey = GlobalKey<FormState>();
   
   String _selectedCategory = '';
@@ -36,12 +41,12 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   DateTime _selectedDate = DateTime.now();
   bool _isSelfReceipt = false;
   int? _selectedWalletId;
+  int? _selectedProjectId;
   
   final _amountController = TextEditingController();
   final _locationController = TextEditingController();
   final _vendorController = TextEditingController();
   final _noteController = TextEditingController();
-  final _projectController = TextEditingController(text: 'Operations');
 
   final _picker = ImagePicker();
   XFile? _selectedImage;
@@ -57,6 +62,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   @override
   void initState() {
     super.initState();
+    if (!_isEditing) {
+      _selectedProjectId = _lastUsedProjectId;
+    }
     Future.microtask(() {
       ref.read(categoryProvider.notifier).fetchCategories(all: false).then((_) {
         final cats = ref.read(categoryProvider).categories
@@ -97,11 +105,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         _selectedDate = _existingExpense!.date;
         _isSelfReceipt = _existingExpense!.isSelfReceipt;
         _selectedWalletId = _existingExpense!.walletId;
+        _selectedProjectId = _existingExpense!.projectId;
         
         _amountController.text = _existingExpense!.amount.toString();
         _locationController.text = _existingExpense!.location ?? '';
         _vendorController.text = _existingExpense!.vendor ?? '';
-        _projectController.text = _existingExpense!.project ?? 'Operations';
         _noteController.text = _existingExpense!.note ?? '';
       });
     }
@@ -170,7 +178,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     _locationController.dispose();
     _vendorController.dispose();
     _noteController.dispose();
-    _projectController.dispose();
     super.dispose();
   }
 
@@ -245,6 +252,13 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         }
       }
 
+      final selectedProjectName = _selectedProjectId == null
+          ? null
+          : ref.read(projectProvider).projects.firstWhere(
+              (p) => p.id == _selectedProjectId,
+              orElse: () => const Project(id: -1, name: ''),
+            ).name;
+
       final expense = Expense(
         id: _existingExpense?.id,
         amount: double.parse(_amountController.text),
@@ -256,7 +270,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         paymentMethod: _selectedPaymentMethod,
         location: _locationController.text.isNotEmpty ? _locationController.text : null,
         vendor: _vendorController.text.isNotEmpty ? _vendorController.text : null,
-        project: _projectController.text.trim().isNotEmpty ? _projectController.text.trim() : 'Operations',
+        projectId: _selectedProjectId,
+        project: selectedProjectName,
         photoUrl: photoUrl,
         userId: _existingExpense?.userId,
         walletId: _selectedWalletId,
@@ -267,6 +282,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           await ref.read(expenseProvider.notifier).updateExpense(expense.id!, expense);
         } else {
           await ref.read(expenseProvider.notifier).addExpense(expense);
+          _lastUsedProjectId = _selectedProjectId;
         }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -301,16 +317,12 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextFormField(
-                controller: _projectController,
-                decoration: const InputDecoration(
-                  labelText: 'Project',
-                ),
-                validator: (val) {
-                  if (val == null || val.trim().isEmpty) {
-                    return 'Project is required';
-                  }
-                  return null;
+              ProjectSelector(
+                selectedProjectId: _selectedProjectId,
+                onSelected: (project) {
+                  setState(() {
+                    _selectedProjectId = project?.id;
+                  });
                 },
               ),
               const SizedBox(height: 16),
@@ -461,17 +473,24 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   
                   return DropdownButtonFormField<int?>(
                     value: _selectedWalletId,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Deduct From Account / Wallet',
                     ),
                     items: [
                       const DropdownMenuItem<int?>(
                         value: null,
-                        child: Text('No Account (Generic Balance)'),
+                        child: Text(
+                          'No Account (Generic Balance)',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       ...filteredWallets.map((w) => DropdownMenuItem<int?>(
                         value: w.id,
-                        child: Text('${w.name} (${w.currency})'),
+                        child: Text(
+                          '${w.name} (${w.currency})',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       )),
                     ],
                     onChanged: (val) => setState(() => _selectedWalletId = val),

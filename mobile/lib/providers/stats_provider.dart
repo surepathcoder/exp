@@ -36,12 +36,12 @@ class StatsNotifier extends StateNotifier<StatsState> {
 
   StatsNotifier(this._api) : super(StatsState());
 
-  Future<void> fetchAll() async {
+  Future<void> fetchAll({bool isSuperAdmin = false}) async {
     state = state.copyWith(isLoading: true);
     try {
       final results = await Future.wait([
         _api.getStats(),
-        _api.getAuditLogs(limit: 20),
+        isSuperAdmin ? _api.getAuditLogs(limit: 20) : Future.value(<AuditLog>[]),
       ]);
       state = state.copyWith(
         stats: results[0] as SystemStats,

@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Enum, Numeric
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from typing import Optional
 import enum
 from app.database import Base
 
@@ -53,13 +54,18 @@ class Expense(Base):
     payment_method = Column(String, nullable=True)
     location = Column(String, nullable=True)
     vendor = Column(String, nullable=True)
-    project = Column(String, nullable=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     photo_url = Column(String, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     wallet_id = Column(Integer, ForeignKey("wallets.id"), nullable=True)
     
     owner = relationship("User", back_populates="expenses")
     wallet = relationship("Wallet", back_populates="expenses")
+    project_relation = relationship("Project", back_populates="expenses")
+
+    @property
+    def project(self) -> Optional[str]:
+        return self.project_relation.name if self.project_relation else None
 
 
 class Income(Base):
@@ -73,9 +79,15 @@ class Income(Base):
     note = Column(String, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     wallet_id = Column(Integer, ForeignKey("wallets.id"), nullable=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     
     owner = relationship("User", back_populates="incomes")
     wallet = relationship("Wallet", back_populates="incomes")
+    project_relation = relationship("Project", back_populates="incomes")
+
+    @property
+    def project(self) -> Optional[str]:
+        return self.project_relation.name if self.project_relation else None
 
 
 class Transfer(Base):
@@ -91,7 +103,13 @@ class Transfer(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     wallet_from_id = Column(Integer, ForeignKey("wallets.id"), nullable=True)
     wallet_to_id = Column(Integer, ForeignKey("wallets.id"), nullable=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     
     owner = relationship("User", back_populates="transfers")
     wallet_from = relationship("Wallet", foreign_keys=[wallet_from_id])
     wallet_to = relationship("Wallet", foreign_keys=[wallet_to_id])
+    project_relation = relationship("Project", back_populates="transfers")
+
+    @property
+    def project(self) -> Optional[str]:
+        return self.project_relation.name if self.project_relation else None

@@ -6,7 +6,8 @@ import '../../widgets/settings/create_user_dialog.dart';
 import '../../theme/app_theme.dart';
 
 class UserManagementSection extends ConsumerStatefulWidget {
-  const UserManagementSection({super.key});
+  final bool isSuperAdmin;
+  const UserManagementSection({super.key, this.isSuperAdmin = true});
 
   @override
   ConsumerState<UserManagementSection> createState() => _UserManagementSectionState();
@@ -70,26 +71,28 @@ class _UserManagementSectionState extends ConsumerState<UserManagementSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        OutlinedButton.icon(
-          onPressed: () async {
-            final result = await showDialog<bool>(
-              context: context,
-              builder: (_) => const CreateUserDialog(),
-            );
-            if (result == true) {
-              ref.read(userProvider.notifier).fetchUsers();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('User created successfully')),
-                );
+        if (widget.isSuperAdmin) ...[
+          OutlinedButton.icon(
+            onPressed: () async {
+              final result = await showDialog<bool>(
+                context: context,
+                builder: (_) => const CreateUserDialog(),
+              );
+              if (result == true) {
+                ref.read(userProvider.notifier).fetchUsers();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('User created successfully')),
+                  );
+                }
               }
-            }
-          },
-          icon: const Icon(Icons.person_add),
-          label: const Text('Create User'),
-          style: OutlinedButton.styleFrom(foregroundColor: AppTheme.primaryColor),
-        ),
-        const SizedBox(height: 12),
+            },
+            icon: const Icon(Icons.person_add),
+            label: const Text('Create User'),
+            style: OutlinedButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+          ),
+          const SizedBox(height: 12),
+        ],
         if (state.isLoading && state.users.isEmpty)
           const Center(child: CircularProgressIndicator())
         else
@@ -157,11 +160,13 @@ class _UserManagementSectionState extends ConsumerState<UserManagementSection> {
                   ),
                 ],
               ),
-              trailing: IconButton(
-                icon: const Icon(Icons.lock_reset, size: 20),
-                tooltip: 'Reset Password',
-                onPressed: () => _showResetPasswordDialog(user.id, user.name),
-              ),
+              trailing: widget.isSuperAdmin
+                  ? IconButton(
+                      icon: const Icon(Icons.lock_reset, size: 20),
+                      tooltip: 'Reset Password',
+                      onPressed: () => _showResetPasswordDialog(user.id, user.name),
+                    )
+                  : null,
             ),
           )),
       ],

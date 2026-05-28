@@ -6,6 +6,7 @@ import '../models/expense.dart';
 import '../models/income.dart';
 import '../models/transfer.dart';
 import '../models/notification.dart';
+import '../models/project.dart';
 import 'storage_service.dart';
 
 class ApiService {
@@ -107,6 +108,7 @@ class ApiService {
     double? maxAmount,
     String? status,
     List<String>? projects,
+    int? projectId,
   }) async {
     try {
       final queryParams = <String, dynamic>{};
@@ -117,6 +119,9 @@ class ApiService {
       }
       if (projects != null && projects.isNotEmpty) {
         queryParams['project'] = projects;
+      }
+      if (projectId != null) {
+        queryParams['project_id'] = projectId;
       }
       if (userId != null) queryParams['user_id'] = userId;
       if (search != null && search.isNotEmpty) queryParams['search'] = search;
@@ -251,6 +256,8 @@ class ApiService {
     String? endDate,
     String? source,
     int? userId,
+    List<String>? projects,
+    int? projectId,
   }) async {
     try {
       final queryParams = <String, dynamic>{};
@@ -258,6 +265,12 @@ class ApiService {
       if (endDate != null) queryParams['end_date'] = endDate;
       if (source != null) queryParams['source'] = source;
       if (userId != null) queryParams['user_id'] = userId;
+      if (projects != null && projects.isNotEmpty) {
+        queryParams['project'] = projects;
+      }
+      if (projectId != null) {
+        queryParams['project_id'] = projectId;
+      }
 
       final response = await _dio.get('/incomes', queryParameters: queryParams);
       return (response.data as List).map((e) => Income.fromJson(e)).toList();
@@ -292,17 +305,55 @@ class ApiService {
     }
   }
 
+  // Projects
+  Future<List<Project>> getProjects({bool? activeOnly}) async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (activeOnly != null) queryParams['active_only'] = activeOnly;
+      final response = await _dio.get('/projects', queryParameters: queryParams);
+      return (response.data as List).map((p) => Project.fromJson(p)).toList();
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<Project> createProject(Project project) async {
+    try {
+      final response = await _dio.post('/projects', data: project.toJson());
+      return Project.fromJson(response.data);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getDashboardProjects() async {
+    try {
+      final response = await _dio.get('/dashboard/projects');
+      return response.data;
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   // Transfers
   Future<List<Transfer>> getTransfers({
     String? startDate,
     String? endDate,
     int? userId,
+    List<String>? projects,
+    int? projectId,
   }) async {
     try {
       final queryParams = <String, dynamic>{};
       if (startDate != null) queryParams['start_date'] = startDate;
       if (endDate != null) queryParams['end_date'] = endDate;
       if (userId != null) queryParams['user_id'] = userId;
+      if (projects != null && projects.isNotEmpty) {
+        queryParams['project'] = projects;
+      }
+      if (projectId != null) {
+        queryParams['project_id'] = projectId;
+      }
 
       final response = await _dio.get('/transfers', queryParameters: queryParams);
       return (response.data as List).map((e) => Transfer.fromJson(e)).toList();

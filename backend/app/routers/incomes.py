@@ -5,7 +5,7 @@ from datetime import datetime
 
 from app.database import get_db
 from app.schemas import IncomeCreate, IncomeResponse, IncomeBase
-from app.models import Income, User, RoleEnum
+from app.models import Income, User, RoleEnum, Project, ProjectStatusEnum
 from app.models.wallet import Wallet
 from app.auth import get_current_user
 from app.utils.notification_helper import create_notification
@@ -42,6 +42,10 @@ def get_incomes(
     end_date: Optional[datetime] = None,
     source: Optional[str] = None,
     user_id: Optional[int] = None,
+    project: Optional[List[str]] = Query(None),
+    project_id: Optional[int] = None,
+    skip: int = 0,
+    limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -61,8 +65,12 @@ def get_incomes(
         query = query.filter(Income.date <= end_date)
     if source:
         query = query.filter(Income.source == source)
+    if project_id is not None:
+        query = query.filter(Income.project_id == project_id)
+    if project:
+        query = query.join(Income.project_relation).filter(Project.name.in_(project))
         
-    return query.order_by(Income.date.desc()).all()
+    return query.order_by(Income.date.desc()).offset(skip).limit(limit).all()
 
 @router.post("", response_model=IncomeResponse, status_code=status.HTTP_201_CREATED)
 async def create_income(
@@ -71,6 +79,18 @@ async def create_income(
     current_user: User = Depends(get_current_user)
 ):
     _validate_wallet_currency(db, income_in.wallet_id, income_in.currency.value, current_user)
+    
+    # Project validation
+    if income_in.project_id is not None:
+        project = db.query(Project).filter(Project.id == income_in.project_id).first()
+        if not project:
+            raise HTTPException(status_code=400, detail="Selected project does not exist")
+        if project.status in [ProjectStatusEnum.completed, ProjectStatusEnum.expired, ProjectStatusEnum.cancelled]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot attach transactions to a project with status '{project.status.value}'"
+            )
+
     new_income = Income(**income_in.model_dump(), user_id=current_user.id)
     db.add(new_income)
     db.commit()
@@ -109,6 +129,17 @@ def update_income(
     old_wallet_id = income.wallet_id
     _validate_wallet_currency(db, income_in.wallet_id, income_in.currency.value, current_user)
     
+    # Project validation
+    if income_in.project_id is not None:
+        project = db.query(Project).filter(Project.id == income_in.project_id).first()
+        if not project:
+            raise HTTPException(status_code=400, detail="Selected project does not exist")
+        if project.status in [ProjectStatusEnum.completed, ProjectStatusEnum.expired, ProjectStatusEnum.cancelled]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot attach transactions to a project with status '{project.status.value}'"
+            )
+
     income_query.update(income_in.model_dump(), synchronize_session=False)
     db.commit()
     

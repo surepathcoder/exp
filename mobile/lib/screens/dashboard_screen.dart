@@ -17,6 +17,7 @@ import '../widgets/add_transfer_dialog.dart';
 import '../widgets/currency_exchange_dialog.dart';
 import '../widgets/dashboard/wallet_list.dart';
 import '../providers/wallet_provider.dart';
+import '../widgets/dashboard/project_portfolio_section.dart';
 
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -189,6 +190,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     WalletList(),
                     SizedBox(height: 16),
                     SummaryCards(),
+                    SizedBox(height: 16),
+                    ProjectPortfolioSection(),
                     SizedBox(height: 16),
                     TrendLineChart(),
                     SizedBox(height: 16),

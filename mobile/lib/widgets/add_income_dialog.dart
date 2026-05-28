@@ -7,6 +7,9 @@ import '../providers/dashboard_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/constants.dart';
 import '../providers/wallet_provider.dart';
+import '../models/project.dart';
+import '../providers/project_provider.dart';
+import '../widgets/project_selector.dart';
 
 class AddIncomeDialog extends ConsumerStatefulWidget {
   const AddIncomeDialog({super.key});
@@ -16,6 +19,8 @@ class AddIncomeDialog extends ConsumerStatefulWidget {
 }
 
 class _AddIncomeDialogState extends ConsumerState<AddIncomeDialog> {
+  static int? _lastUsedProjectId;
+
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
@@ -25,12 +30,14 @@ class _AddIncomeDialogState extends ConsumerState<AddIncomeDialog> {
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
   int? _selectedWalletId;
+  int? _selectedProjectId;
 
   final List<String> _sources = ['Salary', 'Donation', 'Investment', 'Refund', 'Other'];
 
   @override
   void initState() {
     super.initState();
+    _selectedProjectId = _lastUsedProjectId;
     Future.microtask(() {
       ref.read(walletProvider.notifier).fetchWallets().then((_) {
         final matching = ref.read(walletProvider).wallets
@@ -71,6 +78,13 @@ class _AddIncomeDialogState extends ConsumerState<AddIncomeDialog> {
 
     setState(() => _isLoading = true);
 
+    final selectedProjectName = _selectedProjectId == null
+        ? null
+        : ref.read(projectProvider).projects.firstWhere(
+            (p) => p.id == _selectedProjectId,
+            orElse: () => const Project(id: -1, name: ''),
+          ).name;
+
     final income = Income(
       amount: double.parse(_amountController.text),
       currency: _selectedCurrency,
@@ -78,6 +92,8 @@ class _AddIncomeDialogState extends ConsumerState<AddIncomeDialog> {
       date: _selectedDate,
       note: _noteController.text.isNotEmpty ? _noteController.text : null,
       walletId: _selectedWalletId,
+      projectId: _selectedProjectId,
+      project: selectedProjectName,
     );
 
     try {
@@ -86,6 +102,7 @@ class _AddIncomeDialogState extends ConsumerState<AddIncomeDialog> {
       await ref.read(dashboardProvider.notifier).fetchDashboardData();
       
       if (mounted) {
+        _lastUsedProjectId = _selectedProjectId;
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Income added successfully')),
@@ -175,6 +192,7 @@ class _AddIncomeDialogState extends ConsumerState<AddIncomeDialog> {
                   
                   return DropdownButtonFormField<int?>(
                     value: _selectedWalletId,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Deposit To Account / Wallet',
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -182,15 +200,30 @@ class _AddIncomeDialogState extends ConsumerState<AddIncomeDialog> {
                     items: [
                       const DropdownMenuItem<int?>(
                         value: null,
-                        child: Text('No Account (Generic Balance)'),
+                        child: Text(
+                          'No Account (Generic Balance)',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       ...filteredWallets.map((w) => DropdownMenuItem<int?>(
                         value: w.id,
-                        child: Text('${w.name} (${w.currency})'),
+                        child: Text(
+                          '${w.name} (${w.currency})',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       )),
                     ],
                     onChanged: (val) => setState(() => _selectedWalletId = val),
                   );
+                },
+              ),
+              const SizedBox(height: 16),
+              ProjectSelector(
+                selectedProjectId: _selectedProjectId,
+                onSelected: (project) {
+                  setState(() {
+                    _selectedProjectId = project?.id;
+                  });
                 },
               ),
               const SizedBox(height: 16),

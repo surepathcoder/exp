@@ -9,6 +9,8 @@ class Income extends Equatable {
   final String? note;
   final int? userId;
   final int? walletId;
+  final String? project;
+  final int? projectId;
 
   const Income({
     this.id,
@@ -19,6 +21,8 @@ class Income extends Equatable {
     this.note,
     this.userId,
     this.walletId,
+    this.project,
+    this.projectId,
   });
 
   factory Income.fromJson(Map<String, dynamic> json) {
@@ -31,6 +35,8 @@ class Income extends Equatable {
       note: json['note'],
       userId: json['user_id'],
       walletId: json['wallet_id'],
+      project: json['project'],
+      projectId: json['project_id'],
     );
   }
 
@@ -44,6 +50,8 @@ class Income extends Equatable {
       'note': note,
       if (userId != null) 'user_id': userId,
       if (walletId != null) 'wallet_id': walletId,
+      'project': project,
+      'project_id': projectId,
     };
   }
 
@@ -56,6 +64,8 @@ class Income extends Equatable {
     String? note,
     int? userId,
     int? walletId,
+    String? project,
+    int? projectId,
   }) {
     return Income(
       id: id ?? this.id,
@@ -66,6 +76,8 @@ class Income extends Equatable {
       note: note ?? this.note,
       userId: userId ?? this.userId,
       walletId: walletId ?? this.walletId,
+      project: project ?? this.project,
+      projectId: projectId ?? this.projectId,
     );
   }
 
@@ -79,6 +91,8 @@ class Income extends Equatable {
         note,
         userId,
         walletId,
+        project,
+        projectId,
       ];
 }
 

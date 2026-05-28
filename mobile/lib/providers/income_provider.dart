@@ -36,6 +36,8 @@ class IncomeNotifier extends StateNotifier<IncomeState> {
     String? endDate,
     String? source,
     int? userId,
+    List<String>? projects,
+    int? projectId,
   }) async {
     state = state.copyWith(isLoading: true);
     try {
@@ -44,6 +46,8 @@ class IncomeNotifier extends StateNotifier<IncomeState> {
         endDate: endDate,
         source: source,
         userId: userId,
+        projects: projects,
+        projectId: projectId,
       );
       state = state.copyWith(incomes: incomes, isLoading: false);
     } catch (e) {

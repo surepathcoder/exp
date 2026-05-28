@@ -131,11 +131,13 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       userId: _selectedUserId,
       startDate: startStr,
       endDate: endStr,
+      projects: _selectedProjects.isEmpty ? null : _selectedProjects,
     );
     await ref.read(transferProvider.notifier).fetchTransfers(
       userId: _selectedUserId,
       startDate: startStr,
       endDate: endStr,
+      projects: _selectedProjects.isEmpty ? null : _selectedProjects,
     );
   }
 

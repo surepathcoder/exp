@@ -9,7 +9,7 @@ import shutil
 
 from app.database import get_db
 from app.schemas import ExpenseCreate, ExpenseResponse, ExpenseBase
-from app.models import Expense, User, RoleEnum
+from app.models import Expense, User, RoleEnum, Project, ProjectStatusEnum
 from app.models.wallet import Wallet
 from app.auth import get_current_user
 from app.utils.notification_helper import create_notification, check_and_trigger_balance_warning
@@ -85,7 +85,8 @@ def _get_filtered_expenses_query(
     min_amount: Optional[float] = None,
     max_amount: Optional[float] = None,
     status: Optional[str] = None,
-    project: Optional[List[str]] = None
+    project: Optional[List[str]] = None,
+    project_id: Optional[int] = None
 ):
     query = db.query(Expense)
     if current_user.role == RoleEnum.user:
@@ -101,21 +102,23 @@ def _get_filtered_expenses_query(
     if categories:
         query = query.filter(Expense.category.in_(categories))
     if project:
-        query = query.filter(Expense.project.in_(project))
+        query = query.join(Expense.project_relation).filter(Project.name.in_(project))
+    if project_id is not None:
+        query = query.filter(Expense.project_id == project_id)
     if min_amount is not None:
         query = query.filter(Expense.amount >= min_amount)
     if max_amount is not None:
         query = query.filter(Expense.amount <= max_amount)
     if search:
         search_pattern = f"%{search}%"
-        query = query.filter(
+        query = query.outerjoin(Expense.project_relation).filter(
             or_(
                 Expense.note.ilike(search_pattern),
                 Expense.vendor.ilike(search_pattern),
                 Expense.payment_method.ilike(search_pattern),
                 Expense.location.ilike(search_pattern),
                 Expense.category.ilike(search_pattern),
-                Expense.project.ilike(search_pattern)
+                Project.name.ilike(search_pattern)
             )
         )
     if status and status != "all":
@@ -156,14 +159,17 @@ def get_expenses(
     max_amount: Optional[float] = None,
     status: Optional[str] = None,
     project: Optional[List[str]] = Query(None),
+    project_id: Optional[int] = None,
+    skip: int = 0,
+    limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     query = _get_filtered_expenses_query(
         db, current_user, start_date, end_date, category, user_id,
-        search, min_amount, max_amount, status, project
+        search, min_amount, max_amount, status, project, project_id
     )
-    return query.all()
+    return query.offset(skip).limit(limit).all()
 
 @router.get("/export/csv")
 def export_expenses_csv(
@@ -251,6 +257,18 @@ async def create_expense(
     current_user: User = Depends(get_current_user)
 ):
     _validate_wallet_currency(db, expense_in.wallet_id, expense_in.currency.value, current_user)
+    
+    # Project validation
+    if expense_in.project_id is not None:
+        project = db.query(Project).filter(Project.id == expense_in.project_id).first()
+        if not project:
+            raise HTTPException(status_code=400, detail="Selected project does not exist")
+        if project.status in [ProjectStatusEnum.completed, ProjectStatusEnum.expired, ProjectStatusEnum.cancelled]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot attach transactions to a project with status '{project.status.value}'"
+            )
+
     new_expense = Expense(**expense_in.model_dump(), user_id=current_user.id)
     db.add(new_expense)
     db.commit()
@@ -291,6 +309,17 @@ def update_expense(
     old_wallet_id = expense.wallet_id
     _validate_wallet_currency(db, expense_in.wallet_id, expense_in.currency.value, current_user)
     
+    # Project validation
+    if expense_in.project_id is not None:
+        project = db.query(Project).filter(Project.id == expense_in.project_id).first()
+        if not project:
+            raise HTTPException(status_code=400, detail="Selected project does not exist")
+        if project.status in [ProjectStatusEnum.completed, ProjectStatusEnum.expired, ProjectStatusEnum.cancelled]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot attach transactions to a project with status '{project.status.value}'"
+            )
+
     expense_query.update(expense_in.model_dump(), synchronize_session=False)
     db.commit()
     

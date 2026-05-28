@@ -8,6 +8,9 @@ import '../theme/app_theme.dart';
 import '../utils/constants.dart';
 import '../utils/currency_converter.dart';
 import '../providers/wallet_provider.dart';
+import '../models/project.dart';
+import '../providers/project_provider.dart';
+import '../widgets/project_selector.dart';
 
 class AddTransferDialog extends ConsumerStatefulWidget {
   const AddTransferDialog({super.key});
@@ -17,6 +20,8 @@ class AddTransferDialog extends ConsumerStatefulWidget {
 }
 
 class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
+  static int? _lastUsedProjectId;
+
   final _formKey = GlobalKey<FormState>();
   final _amountFromController = TextEditingController();
   final _amountToController = TextEditingController();
@@ -29,10 +34,12 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
   bool _isAutoCalculating = true;
   int? _selectedWalletFromId;
   int? _selectedWalletToId;
+  int? _selectedProjectId;
 
   @override
   void initState() {
     super.initState();
+    _selectedProjectId = _lastUsedProjectId;
     _amountFromController.addListener(_onAmountFromChanged);
     Future.microtask(() {
       ref.read(walletProvider.notifier).fetchWallets().then((_) {
@@ -98,6 +105,13 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
 
     setState(() => _isLoading = true);
 
+    final selectedProjectName = _selectedProjectId == null
+        ? null
+        : ref.read(projectProvider).projects.firstWhere(
+            (p) => p.id == _selectedProjectId,
+            orElse: () => const Project(id: -1, name: ''),
+          ).name;
+
     final transfer = Transfer(
       amountFrom: double.parse(_amountFromController.text),
       currencyFrom: _selectedCurrencyFrom,
@@ -107,6 +121,8 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
       note: _noteController.text.isNotEmpty ? _noteController.text : null,
       walletFromId: _selectedWalletFromId,
       walletToId: _selectedWalletToId,
+      projectId: _selectedProjectId,
+      project: selectedProjectName,
     );
 
     try {
@@ -115,6 +131,7 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
       await ref.read(dashboardProvider.notifier).fetchDashboardData();
       
       if (mounted) {
+        _lastUsedProjectId = _selectedProjectId;
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Transfer recorded successfully')),
@@ -207,6 +224,7 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
                   
                   return DropdownButtonFormField<int?>(
                     value: _selectedWalletFromId,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Source Account / Wallet',
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -214,11 +232,17 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
                     items: [
                       const DropdownMenuItem<int?>(
                         value: null,
-                        child: Text('No Account (Generic Balance)'),
+                        child: Text(
+                          'No Account (Generic Balance)',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       ...filteredWallets.map((w) => DropdownMenuItem<int?>(
                         value: w.id,
-                        child: Text('${w.name} (${w.currency})'),
+                        child: Text(
+                          '${w.name} (${w.currency})',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       )),
                     ],
                     onChanged: (val) => setState(() => _selectedWalletFromId = val),
@@ -306,6 +330,7 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
                   
                   return DropdownButtonFormField<int?>(
                     value: _selectedWalletToId,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Destination Account / Wallet',
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -313,15 +338,30 @@ class _AddTransferDialogState extends ConsumerState<AddTransferDialog> {
                     items: [
                       const DropdownMenuItem<int?>(
                         value: null,
-                        child: Text('No Account (Generic Balance)'),
+                        child: Text(
+                          'No Account (Generic Balance)',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       ...filteredWallets.map((w) => DropdownMenuItem<int?>(
                         value: w.id,
-                        child: Text('${w.name} (${w.currency})'),
+                        child: Text(
+                          '${w.name} (${w.currency})',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       )),
                     ],
                     onChanged: (val) => setState(() => _selectedWalletToId = val),
                   );
+                },
+              ),
+              const SizedBox(height: 16),
+              ProjectSelector(
+                selectedProjectId: _selectedProjectId,
+                onSelected: (project) {
+                  setState(() {
+                    _selectedProjectId = project?.id;
+                  });
                 },
               ),
               const SizedBox(height: 16),

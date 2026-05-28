@@ -6,7 +6,8 @@ import '../../widgets/settings/stat_card.dart';
 import '../../theme/app_theme.dart';
 
 class SystemStatsSection extends ConsumerStatefulWidget {
-  const SystemStatsSection({super.key});
+  final bool isSuperAdmin;
+  const SystemStatsSection({super.key, this.isSuperAdmin = true});
 
   @override
   ConsumerState<SystemStatsSection> createState() => _SystemStatsSectionState();
@@ -16,7 +17,7 @@ class _SystemStatsSectionState extends ConsumerState<SystemStatsSection> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(statsProvider.notifier).fetchAll());
+    Future.microtask(() => ref.read(statsProvider.notifier).fetchAll(isSuperAdmin: widget.isSuperAdmin));
   }
 
   @override
@@ -50,34 +51,36 @@ class _SystemStatsSectionState extends ConsumerState<SystemStatsSection> {
             StatCard(label: 'Net (USD)', value: fmt.format(state.stats.totalIncomeAmountUsd - state.stats.totalExpenseAmountUsd), icon: Icons.account_balance, color: AppTheme.primaryColor),
           ],
         ),
-        const SizedBox(height: 20),
-        const Text('Recent Audit Log', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-        const SizedBox(height: 8),
-        if (state.auditLogs.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('No audit entries yet', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
-          )
-        else
-          ...state.auditLogs.take(10).map((log) => Card(
-            margin: const EdgeInsets.only(bottom: 6),
-            child: ListTile(
-              dense: true,
-              leading: Icon(
-                _iconForAction(log.action),
-                size: 20,
-                color: AppTheme.primaryColor,
+        if (widget.isSuperAdmin) ...[
+          const SizedBox(height: 20),
+          const Text('Recent Audit Log', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          const SizedBox(height: 8),
+          if (state.auditLogs.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('No audit entries yet', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+            )
+          else
+            ...state.auditLogs.take(10).map((log) => Card(
+              margin: const EdgeInsets.only(bottom: 6),
+              child: ListTile(
+                dense: true,
+                leading: Icon(
+                  _iconForAction(log.action),
+                  size: 20,
+                  color: AppTheme.primaryColor,
+                ),
+                title: Text(
+                  _formatAction(log.action),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+                subtitle: Text(
+                  '${log.userEmail}  •  ${log.createdAt.substring(0, 16).replaceAll('T', ' ')}',
+                  style: const TextStyle(fontSize: 11),
+                ),
               ),
-              title: Text(
-                _formatAction(log.action),
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-              ),
-              subtitle: Text(
-                '${log.userEmail}  •  ${log.createdAt.substring(0, 16).replaceAll('T', ' ')}',
-                style: const TextStyle(fontSize: 11),
-              ),
-            ),
-          )),
+            )),
+        ],
         if (state.error != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),

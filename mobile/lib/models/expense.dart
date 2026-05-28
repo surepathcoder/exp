@@ -12,6 +12,7 @@ class Expense extends Equatable {
   final String? location;
   final String? vendor;
   final String? project;
+  final int? projectId;
   final String? photoUrl;
   final int? userId;
   final int? walletId;
@@ -27,7 +28,8 @@ class Expense extends Equatable {
     this.paymentMethod,
     this.location,
     this.vendor,
-    this.project = 'Operations',
+    this.project,
+    this.projectId,
     this.photoUrl,
     this.userId,
     this.walletId,
@@ -45,7 +47,8 @@ class Expense extends Equatable {
       paymentMethod: json['payment_method'],
       location: json['location'],
       vendor: json['vendor'],
-      project: json['project'] ?? 'Operations',
+      project: json['project'],
+      projectId: json['project_id'],
       photoUrl: json['photo_url'],
       userId: json['user_id'],
       walletId: json['wallet_id'],
@@ -64,7 +67,8 @@ class Expense extends Equatable {
       'payment_method': paymentMethod,
       'location': location,
       'vendor': vendor,
-      'project': project ?? 'Operations',
+      'project': project,
+      'project_id': projectId,
       'photo_url': photoUrl,
       if (userId != null) 'user_id': userId,
       if (walletId != null) 'wallet_id': walletId,
@@ -83,6 +87,7 @@ class Expense extends Equatable {
     String? location,
     String? vendor,
     String? project,
+    int? projectId,
     String? photoUrl,
     int? userId,
     int? walletId,
@@ -99,6 +104,7 @@ class Expense extends Equatable {
       location: location ?? this.location,
       vendor: vendor ?? this.vendor,
       project: project ?? this.project,
+      projectId: projectId ?? this.projectId,
       photoUrl: photoUrl ?? this.photoUrl,
       userId: userId ?? this.userId,
       walletId: walletId ?? this.walletId,
@@ -118,6 +124,7 @@ class Expense extends Equatable {
         location,
         vendor,
         project,
+        projectId,
         photoUrl,
         userId,
         walletId,

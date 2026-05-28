@@ -11,6 +11,8 @@ class Transfer extends Equatable {
   final int? userId;
   final int? walletFromId;
   final int? walletToId;
+  final String? project;
+  final int? projectId;
 
   const Transfer({
     this.id,
@@ -23,6 +25,8 @@ class Transfer extends Equatable {
     this.userId,
     this.walletFromId,
     this.walletToId,
+    this.project,
+    this.projectId,
   });
 
   factory Transfer.fromJson(Map<String, dynamic> json) {
@@ -37,6 +41,8 @@ class Transfer extends Equatable {
       userId: json['user_id'],
       walletFromId: json['wallet_from_id'],
       walletToId: json['wallet_to_id'],
+      project: json['project'],
+      projectId: json['project_id'],
     );
   }
 
@@ -52,6 +58,8 @@ class Transfer extends Equatable {
       if (userId != null) 'user_id': userId,
       if (walletFromId != null) 'wallet_from_id': walletFromId,
       if (walletToId != null) 'wallet_to_id': walletToId,
+      'project': project,
+      'project_id': projectId,
     };
   }
 
@@ -66,6 +74,8 @@ class Transfer extends Equatable {
     int? userId,
     int? walletFromId,
     int? walletToId,
+    String? project,
+    int? projectId,
   }) {
     return Transfer(
       id: id ?? this.id,
@@ -78,6 +88,8 @@ class Transfer extends Equatable {
       userId: userId ?? this.userId,
       walletFromId: walletFromId ?? this.walletFromId,
       walletToId: walletToId ?? this.walletToId,
+      project: project ?? this.project,
+      projectId: projectId ?? this.projectId,
     );
   }
 
@@ -93,6 +105,8 @@ class Transfer extends Equatable {
         userId,
         walletFromId,
         walletToId,
+        project,
+        projectId,
       ];
 }
 

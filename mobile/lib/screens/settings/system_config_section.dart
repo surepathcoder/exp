@@ -6,12 +6,14 @@ class SystemConfigSection extends StatefulWidget {
   final SystemSettings settings;
   final bool isSaving;
   final Function(Map<String, dynamic>) onSave;
+  final bool readOnly;
 
   const SystemConfigSection({
     super.key,
     required this.settings,
     required this.isSaving,
     required this.onSave,
+    this.readOnly = false,
   });
 
   @override
@@ -63,6 +65,7 @@ class _SystemConfigSectionState extends State<SystemConfigSection> {
       children: [
         TextField(
           controller: _appNameCtrl,
+          enabled: !widget.readOnly,
           decoration: const InputDecoration(labelText: 'App Name'),
         ),
         const SizedBox(height: 16),
@@ -74,7 +77,7 @@ class _SystemConfigSectionState extends State<SystemConfigSection> {
             DropdownMenuItem(value: 'TZS', child: Text('TZS')),
             DropdownMenuItem(value: 'KES', child: Text('KES')),
           ],
-          onChanged: (v) => setState(() => _currency = v ?? 'USD'),
+          onChanged: widget.readOnly ? null : (v) => setState(() => _currency = v ?? 'USD'),
         ),
         const SizedBox(height: 16),
         SwitchListTile(
@@ -82,7 +85,7 @@ class _SystemConfigSectionState extends State<SystemConfigSection> {
           subtitle: Text(_useLiveRates ? 'Fetching from API' : 'Using manual rates'),
           value: _useLiveRates,
           activeColor: AppTheme.primaryColor,
-          onChanged: (v) => setState(() => _useLiveRates = v),
+          onChanged: widget.readOnly ? null : (v) => setState(() => _useLiveRates = v),
           contentPadding: EdgeInsets.zero,
         ),
         if (!_useLiveRates) ...[
@@ -92,6 +95,7 @@ class _SystemConfigSectionState extends State<SystemConfigSection> {
               Expanded(
                 child: TextField(
                   controller: _tzsRateCtrl,
+                  enabled: !widget.readOnly,
                   decoration: const InputDecoration(labelText: 'USD → TZS Rate'),
                   keyboardType: TextInputType.number,
                 ),
@@ -100,6 +104,7 @@ class _SystemConfigSectionState extends State<SystemConfigSection> {
               Expanded(
                 child: TextField(
                   controller: _kesRateCtrl,
+                  enabled: !widget.readOnly,
                   decoration: const InputDecoration(labelText: 'USD → KES Rate'),
                   keyboardType: TextInputType.number,
                 ),
@@ -107,13 +112,15 @@ class _SystemConfigSectionState extends State<SystemConfigSection> {
             ],
           ),
         ],
-        const SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: widget.isSaving ? null : _save,
-          child: widget.isSaving
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : const Text('Save Changes'),
-        ),
+        if (!widget.readOnly) ...[
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: widget.isSaving ? null : _save,
+            child: widget.isSaving
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Text('Save Changes'),
+          ),
+        ],
       ],
     );
   }

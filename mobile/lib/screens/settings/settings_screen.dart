@@ -54,6 +54,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final state = ref.watch(settingsProvider);
     final user = ref.watch(authProvider).user;
     final isSuperAdmin = user?.role.name == 'superadmin';
+    final isAdmin = user?.role.name == 'admin';
+    final isAdminOrSuperAdmin = isSuperAdmin || isAdmin;
 
     ref.listen(settingsProvider, (prev, next) {
       if (next.error != null && (prev == null || prev.error != next.error)) {
@@ -90,19 +92,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              if (isSuperAdmin) ...[
+              if (isAdminOrSuperAdmin) ...[
                 _buildSection(0, Icons.settings, 'System Configuration',
-                  SystemConfigSection(settings: settings, isSaving: state.isSaving, onSave: _saveSettings)),
-                _buildSection(1, Icons.category, 'Category Management', const CategorySection()),
-                _buildSection(2, Icons.people, 'User Management', const UserManagementSection()),
+                  SystemConfigSection(settings: settings, isSaving: state.isSaving, onSave: _saveSettings, readOnly: !isSuperAdmin)),
+                _buildSection(1, Icons.category, 'Category Management', CategorySection(isSuperAdmin: isSuperAdmin)),
+                _buildSection(2, Icons.people, 'User Management', UserManagementSection(isSuperAdmin: isSuperAdmin)),
               ],
               _buildSection(3, Icons.lock, 'Security',
                 SecuritySection(settings: settings, isSaving: state.isSaving, onSaveTimeout: isSuperAdmin ? _saveSettings : (_) {})),
-              if (isSuperAdmin) ...[
+              if (isSuperAdmin)
                 _buildSection(4, Icons.notifications, 'Notification Defaults',
                   NotificationSection(settings: settings, isSaving: state.isSaving, onSave: _saveSettings)),
-                _buildSection(5, Icons.analytics, 'System Stats', const SystemStatsSection()),
-              ],
+              if (isAdminOrSuperAdmin)
+                _buildSection(5, Icons.analytics, 'System Stats', SystemStatsSection(isSuperAdmin: isSuperAdmin)),
               const SizedBox(height: 80),
             ],
           ),

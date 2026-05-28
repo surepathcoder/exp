@@ -7,6 +7,7 @@ import '../../utils/color_parser.dart';
 class CategoryTile extends StatelessWidget {
   final AppCategory category;
   final int index;
+  final bool isSuperAdmin;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -14,6 +15,7 @@ class CategoryTile extends StatelessWidget {
     super.key,
     required this.category,
     required this.index,
+    this.isSuperAdmin = true,
     required this.onEdit,
     required this.onDelete,
   });
@@ -43,15 +45,17 @@ class CategoryTile extends StatelessWidget {
         leading: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ReorderableDragStartListener(
-              index: index,
-              child: Icon(
-                Icons.drag_indicator,
-                color: Colors.grey[400],
-                size: 20,
+            if (isSuperAdmin) ...[
+              ReorderableDragStartListener(
+                index: index,
+                child: Icon(
+                  Icons.drag_indicator,
+                  color: Colors.grey[400],
+                  size: 20,
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
+              const SizedBox(width: 8),
+            ],
             Container(
               width: 36,
               height: 36,
@@ -86,26 +90,28 @@ class CategoryTile extends StatelessWidget {
                 : (category.type == 'income' ? Colors.green : Colors.blueGrey),
           ),
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.edit, size: 18),
-              color: AppTheme.primaryColor,
-              onPressed: onEdit,
-              tooltip: 'Edit',
-            ),
-            IconButton(
-              icon: Icon(
-                category.isActive ? Icons.delete_outline : Icons.restore,
-                size: 18,
-              ),
-              color: category.isActive ? AppTheme.errorColor : Colors.green,
-              onPressed: onDelete,
-              tooltip: category.isActive ? 'Deactivate' : 'Restore',
-            ),
-          ],
-        ),
+        trailing: isSuperAdmin
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 18),
+                    color: AppTheme.primaryColor,
+                    onPressed: onEdit,
+                    tooltip: 'Edit',
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      category.isActive ? Icons.delete_outline : Icons.restore,
+                      size: 18,
+                    ),
+                    color: category.isActive ? AppTheme.errorColor : Colors.green,
+                    onPressed: onDelete,
+                    tooltip: category.isActive ? 'Deactivate' : 'Restore',
+                  ),
+                ],
+              )
+            : null,
       ),
     );
   }

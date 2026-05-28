@@ -8,7 +8,8 @@ import '../../utils/category_icons.dart';
 import '../../utils/color_parser.dart';
 
 class CategorySection extends ConsumerStatefulWidget {
-  const CategorySection({super.key});
+  final bool isSuperAdmin;
+  const CategorySection({super.key, this.isSuperAdmin = true});
 
   @override
   ConsumerState<CategorySection> createState() => _CategorySectionState();
@@ -57,7 +58,7 @@ class _CategorySectionState extends ConsumerState<CategorySection> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(categoryProvider.notifier).fetchCategories());
+    Future.microtask(() => ref.read(categoryProvider.notifier).fetchCategories(all: widget.isSuperAdmin));
   }
 
   void _showAddDialog() {
@@ -432,53 +433,73 @@ class _CategorySectionState extends ConsumerState<CategorySection> {
           ),
         ),
         const SizedBox(height: 16),
-        OutlinedButton.icon(
-          onPressed: _showAddDialog,
-          icon: const Icon(Icons.add),
-          label: const Text('Add Category'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppTheme.primaryColor,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            padding: const EdgeInsets.symmetric(vertical: 12),
+        if (widget.isSuperAdmin) ...[
+          OutlinedButton.icon(
+            onPressed: _showAddDialog,
+            icon: const Icon(Icons.add),
+            label: const Text('Add Category'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.primaryColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
+          const SizedBox(height: 16),
+        ],
         if (filteredCategories.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 32),
             child: Text('No categories found', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
           )
         else
-          // Reorderable list representation
-          ReorderableListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: filteredCategories.length,
-            buildDefaultDragHandles: false, // Tile handles it manually
-            itemBuilder: (ctx, idx) {
-              final cat = filteredCategories[idx];
-              return CategoryTile(
-                key: ValueKey(cat.id),
-                category: cat,
-                index: idx,
-                onEdit: () => _showEditDialog(cat),
-                onDelete: () => _handleDelete(cat),
-              );
-            },
-            onReorder: (oldIdx, newIdx) async {
-              if (newIdx > oldIdx) newIdx -= 1;
-              final list = List<AppCategory>.from(filteredCategories);
-              final moved = list.removeAt(oldIdx);
-              list.insert(newIdx, moved);
+          // Reorderable or normal list representation
+          widget.isSuperAdmin
+              ? ReorderableListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredCategories.length,
+                  buildDefaultDragHandles: false, // Tile handles it manually
+                  itemBuilder: (ctx, idx) {
+                    final cat = filteredCategories[idx];
+                    return CategoryTile(
+                      key: ValueKey(cat.id),
+                      category: cat,
+                      index: idx,
+                      isSuperAdmin: widget.isSuperAdmin,
+                      onEdit: () => _showEditDialog(cat),
+                      onDelete: () => _handleDelete(cat),
+                    );
+                  },
+                  onReorder: (oldIdx, newIdx) async {
+                    if (newIdx > oldIdx) newIdx -= 1;
+                    final list = List<AppCategory>.from(filteredCategories);
+                    final moved = list.removeAt(oldIdx);
+                    list.insert(newIdx, moved);
 
-              final payload = list.asMap().entries.map((e) {
-                return {'id': e.value.id, 'sort_order': e.key};
-              }).toList();
+                    final payload = list.asMap().entries.map((e) {
+                      return {'id': e.value.id, 'sort_order': e.key};
+                    }).toList();
 
-              // Trigger api reorder
-              await ref.read(categoryProvider.notifier).reorderCategories(payload);
-            },
-          ),
+                    // Trigger api reorder
+                    await ref.read(categoryProvider.notifier).reorderCategories(payload);
+                  },
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredCategories.length,
+                  itemBuilder: (ctx, idx) {
+                    final cat = filteredCategories[idx];
+                    return CategoryTile(
+                      key: ValueKey(cat.id),
+                      category: cat,
+                      index: idx,
+                      isSuperAdmin: widget.isSuperAdmin,
+                      onEdit: () {},
+                      onDelete: () {},
+                    );
+                  },
+                ),
         if (state.error != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),

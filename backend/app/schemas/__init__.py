@@ -17,6 +17,9 @@ from app.schemas.user_management_schemas import (
     CreateUserRequest, ResetPasswordRequest, ChangePasswordRequest,
     SystemStatsResponse, AuditLogResponse,
 )
+from app.schemas.project import (
+    ProjectBase, ProjectCreate, ProjectUpdate, ProjectResponse, ProjectSummaryResponse,
+)
 
 __all__ = [
     "UserBase", "UserCreate", "UserResponse",
@@ -31,4 +34,5 @@ __all__ = [
     "CategoryResponse", "CategoryCreate", "CategoryUpdate", "CategoryReorder",
     "CreateUserRequest", "ResetPasswordRequest", "ChangePasswordRequest",
     "SystemStatsResponse", "AuditLogResponse",
+    "ProjectBase", "ProjectCreate", "ProjectUpdate", "ProjectResponse", "ProjectSummaryResponse",
 ]

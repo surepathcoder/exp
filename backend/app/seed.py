@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from app.models import User, Expense, RoleEnum, CurrencyEnum, SystemSettings, Category
+from app.models import User, Expense, RoleEnum, CurrencyEnum, SystemSettings, Category, Project, ProjectStatusEnum
 from app.auth import get_password_hash
 
 DEFAULT_CATEGORIES_DATA = [
@@ -71,7 +71,7 @@ def seed_categories(db: Session):
 def seed_users(db: Session):
     """Seed default users if none exist."""
     if db.query(User).first():
-        return
+        return db.query(User).all()
 
     users_data = [
         {"name": "Harrison Kiwone", "email": "super@awoken.com", "role": RoleEnum.superadmin},
@@ -98,7 +98,34 @@ def seed_users(db: Session):
     return db_users
 
 
-def seed_expenses(db: Session, db_users: list):
+def seed_projects(db: Session, db_users: list) -> dict:
+    """Seed default projects and return a mapping of project name -> ID."""
+    existing_projects = db.query(Project).all()
+    if existing_projects:
+        return {p.name: p.id for p in existing_projects}
+
+    admin_id = db_users[1].id if len(db_users) > 1 else None
+    
+    projects_data = [
+        {"name": "Operations", "description": "Standard business operations and logistics", "budget": 20000.0, "currency": CurrencyEnum.USD, "status": ProjectStatusEnum.active, "user_id": admin_id},
+        {"name": "Missions", "description": "International and local outreach missions", "budget": 15000.0, "currency": CurrencyEnum.USD, "status": ProjectStatusEnum.active, "user_id": admin_id},
+        {"name": "Worship Night", "description": "Annual community gathering and praise event", "budget": 5000.0, "currency": CurrencyEnum.USD, "status": ProjectStatusEnum.upcoming, "user_id": admin_id},
+        {"name": "Youth Camp", "description": "Youth training and sports summer workshop", "budget": 10000.0, "currency": CurrencyEnum.USD, "status": ProjectStatusEnum.active, "user_id": admin_id},
+    ]
+    
+    mapping = {}
+    for p_data in projects_data:
+        proj = Project(**p_data)
+        db.add(proj)
+        db.commit()
+        db.refresh(proj)
+        mapping[proj.name] = proj.id
+        
+    print(f"  ✓ {len(projects_data)} projects seeded")
+    return mapping
+
+
+def seed_expenses(db: Session, db_users: list, project_mapping: dict):
     """Seed sample expenses."""
     if not db_users or db.query(Expense).first():
         return
@@ -107,18 +134,18 @@ def seed_expenses(db: Session, db_users: list):
     now = datetime.utcnow()
 
     expenses = [
-        {"amount": 2745.0, "currency": CurrencyEnum.USD, "category": "Travel", "date": now - timedelta(days=1), "user_id": admin_id, "is_self_receipt": False, "vendor": "Turkish Airlines", "project": "Missions"},
-        {"amount": 1494.0, "currency": CurrencyEnum.USD, "category": "Print", "date": now - timedelta(days=2), "user_id": admin_id, "is_self_receipt": True, "vendor": "City Printers", "project": "Operations"},
-        {"amount": 2344.0, "currency": CurrencyEnum.USD, "category": "Accommodation", "date": now - timedelta(days=3), "user_id": admin_id, "is_self_receipt": False, "vendor": "Hilton Hotel", "project": "Missions"},
-        {"amount": 1000.0, "currency": CurrencyEnum.USD, "category": "Transfer", "date": now - timedelta(days=4), "user_id": john_id, "is_self_receipt": False, "vendor": "Bank of America", "project": "Operations"},
-        {"amount": 757.0, "currency": CurrencyEnum.USD, "category": "Hospitality", "date": now - timedelta(days=5), "user_id": admin_id, "is_self_receipt": True, "vendor": "Starbucks", "project": "Worship Night"},
-        {"amount": 273.0, "currency": CurrencyEnum.USD, "category": "Food & Drinks", "date": now - timedelta(days=6), "user_id": john_id, "is_self_receipt": False, "vendor": "Burger King", "project": "Youth Camp"},
-        {"amount": 406.0, "currency": CurrencyEnum.USD, "category": "BOA,ECC,APM", "date": now - timedelta(days=7), "user_id": admin_id, "is_self_receipt": False, "vendor": "Auditing Partners", "project": "Operations"},
-        {"amount": 10000.0, "currency": CurrencyEnum.USD, "category": "Committees", "date": now - timedelta(days=8), "user_id": admin_id, "is_self_receipt": False, "vendor": "Internal Audit", "project": "Operations"},
-        {"amount": 610.0, "currency": CurrencyEnum.USD, "category": "Appreciation", "date": now - timedelta(days=9), "user_id": john_id, "is_self_receipt": True, "vendor": "Gift Cards Inc", "project": "Youth Camp"},
-        {"amount": 35.0, "currency": CurrencyEnum.USD, "category": "Permits", "date": now - timedelta(days=10), "user_id": john_id, "is_self_receipt": False, "vendor": "City Council", "project": "Operations"},
-        {"amount": 80.0, "currency": CurrencyEnum.USD, "category": "Internet/Phone", "date": now - timedelta(days=11), "user_id": admin_id, "is_self_receipt": False, "vendor": "Vodacom", "project": "Operations"},
-        {"amount": 50.0, "currency": CurrencyEnum.USD, "category": "Other", "date": now - timedelta(days=12), "user_id": john_id, "is_self_receipt": False, "vendor": "Corner Store", "project": "Worship Night"},
+        {"amount": 2745.0, "currency": CurrencyEnum.USD, "category": "Travel", "date": now - timedelta(days=1), "user_id": admin_id, "is_self_receipt": False, "vendor": "Turkish Airlines", "project_id": project_mapping.get("Missions")},
+        {"amount": 1494.0, "currency": CurrencyEnum.USD, "category": "Print", "date": now - timedelta(days=2), "user_id": admin_id, "is_self_receipt": True, "vendor": "City Printers", "project_id": project_mapping.get("Operations")},
+        {"amount": 2344.0, "currency": CurrencyEnum.USD, "category": "Accommodation", "date": now - timedelta(days=3), "user_id": admin_id, "is_self_receipt": False, "vendor": "Hilton Hotel", "project_id": project_mapping.get("Missions")},
+        {"amount": 1000.0, "currency": CurrencyEnum.USD, "category": "Transfer", "date": now - timedelta(days=4), "user_id": john_id, "is_self_receipt": False, "vendor": "Bank of America", "project_id": project_mapping.get("Operations")},
+        {"amount": 757.0, "currency": CurrencyEnum.USD, "category": "Hospitality", "date": now - timedelta(days=5), "user_id": admin_id, "is_self_receipt": True, "vendor": "Starbucks", "project_id": project_mapping.get("Worship Night")},
+        {"amount": 273.0, "currency": CurrencyEnum.USD, "category": "Food & Drinks", "date": now - timedelta(days=6), "user_id": john_id, "is_self_receipt": False, "vendor": "Burger King", "project_id": project_mapping.get("Youth Camp")},
+        {"amount": 406.0, "currency": CurrencyEnum.USD, "category": "BOA,ECC,APM", "date": now - timedelta(days=7), "user_id": admin_id, "is_self_receipt": False, "vendor": "Auditing Partners", "project_id": project_mapping.get("Operations")},
+        {"amount": 10000.0, "currency": CurrencyEnum.USD, "category": "Committees", "date": now - timedelta(days=8), "user_id": admin_id, "is_self_receipt": False, "vendor": "Internal Audit", "project_id": project_mapping.get("Operations")},
+        {"amount": 610.0, "currency": CurrencyEnum.USD, "category": "Appreciation", "date": now - timedelta(days=9), "user_id": john_id, "is_self_receipt": True, "vendor": "Gift Cards Inc", "project_id": project_mapping.get("Youth Camp")},
+        {"amount": 35.0, "currency": CurrencyEnum.USD, "category": "Permits", "date": now - timedelta(days=10), "user_id": john_id, "is_self_receipt": False, "vendor": "City Council", "project_id": project_mapping.get("Operations")},
+        {"amount": 80.0, "currency": CurrencyEnum.USD, "category": "Internet/Phone", "date": now - timedelta(days=11), "user_id": admin_id, "is_self_receipt": False, "vendor": "Vodacom", "project_id": project_mapping.get("Operations")},
+        {"amount": 50.0, "currency": CurrencyEnum.USD, "category": "Other", "date": now - timedelta(days=12), "user_id": john_id, "is_self_receipt": False, "vendor": "Corner Store", "project_id": project_mapping.get("Worship Night")},
     ]
     for data in expenses:
         db.add(Expense(**data))
@@ -132,5 +159,6 @@ def seed_database(db: Session):
     seed_settings(db)
     seed_categories(db)
     db_users = seed_users(db)
-    seed_expenses(db, db_users)
+    project_mapping = seed_projects(db, db_users)
+    seed_expenses(db, db_users, project_mapping)
     print("Database seeding complete.")

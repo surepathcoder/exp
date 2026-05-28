@@ -7,6 +7,7 @@ import '../providers/auth_provider.dart';
 import '../widgets/reports/reports_filter_form.dart';
 import '../widgets/reports/reports_preview_panel.dart';
 import '../widgets/navigation_drawer.dart';
+import '../providers/project_provider.dart';
 import '../theme/app_theme.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
@@ -26,6 +27,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       if (user != null && user.role.name != 'user') {
         ref.read(userProvider.notifier).fetchUsers();
       }
+      ref.read(projectProvider.notifier).fetchProjects();
       ref.read(reportsProvider.notifier).fetchPreview();
     });
   }

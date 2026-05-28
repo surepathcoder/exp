@@ -5,7 +5,7 @@ from datetime import datetime
 
 from app.database import get_db
 from app.schemas import TransferCreate, TransferResponse, TransferBase
-from app.models import Transfer, User, RoleEnum
+from app.models import Transfer, User, RoleEnum, Project, ProjectStatusEnum
 from app.models.wallet import Wallet
 from app.auth import get_current_user
 from app.utils.notification_helper import create_notification
@@ -35,6 +35,10 @@ def get_transfers(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     user_id: Optional[int] = None,
+    project: Optional[List[str]] = Query(None),
+    project_id: Optional[int] = None,
+    skip: int = 0,
+    limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -52,8 +56,12 @@ def get_transfers(
         query = query.filter(Transfer.date >= start_date)
     if end_date:
         query = query.filter(Transfer.date <= end_date)
+    if project_id is not None:
+        query = query.filter(Transfer.project_id == project_id)
+    if project:
+        query = query.join(Transfer.project_relation).filter(Project.name.in_(project))
         
-    return query.order_by(Transfer.date.desc()).all()
+    return query.order_by(Transfer.date.desc()).offset(skip).limit(limit).all()
 
 @router.post("", response_model=TransferResponse, status_code=status.HTTP_201_CREATED)
 async def create_transfer(
@@ -64,6 +72,17 @@ async def create_transfer(
     _validate_wallet_currency(db, transfer_in.wallet_from_id, transfer_in.currency_from.value, current_user)
     _validate_wallet_currency(db, transfer_in.wallet_to_id, transfer_in.currency_to.value, current_user)
     
+    # Project validation
+    if transfer_in.project_id is not None:
+        project = db.query(Project).filter(Project.id == transfer_in.project_id).first()
+        if not project:
+            raise HTTPException(status_code=400, detail="Selected project does not exist")
+        if project.status in [ProjectStatusEnum.completed, ProjectStatusEnum.expired, ProjectStatusEnum.cancelled]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot attach transactions to a project with status '{project.status.value}'"
+            )
+
     new_transfer = Transfer(**transfer_in.model_dump(), user_id=current_user.id)
     db.add(new_transfer)
     db.commit()
@@ -107,6 +126,17 @@ def update_transfer(
     _validate_wallet_currency(db, transfer_in.wallet_from_id, transfer_in.currency_from.value, current_user)
     _validate_wallet_currency(db, transfer_in.wallet_to_id, transfer_in.currency_to.value, current_user)
     
+    # Project validation
+    if transfer_in.project_id is not None:
+        project = db.query(Project).filter(Project.id == transfer_in.project_id).first()
+        if not project:
+            raise HTTPException(status_code=400, detail="Selected project does not exist")
+        if project.status in [ProjectStatusEnum.completed, ProjectStatusEnum.expired, ProjectStatusEnum.cancelled]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot attach transactions to a project with status '{project.status.value}'"
+            )
+
     transfer_query.update(transfer_in.model_dump(), synchronize_session=False)
     db.commit()
     
