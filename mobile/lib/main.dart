@@ -15,6 +15,7 @@ import 'screens/change_password_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/reports_screen.dart';
+import 'screens/projects_screen.dart';
 import 'providers/auth_provider.dart';
 import 'widgets/navigation_drawer.dart';
 
@@ -110,6 +111,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/reports',
             builder: (context, state) => const ReportsScreen(),
+          ),
+          GoRoute(
+            path: '/projects',
+            builder: (context, state) => const ProjectsScreen(),
           ),
         ],
       ),

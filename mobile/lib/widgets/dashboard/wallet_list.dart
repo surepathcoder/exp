@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/wallet_provider.dart';
 import 'wallet_card.dart';
+import 'edit_wallet_dialog.dart';
 import '../../theme/app_theme.dart';
 
 class WalletList extends ConsumerWidget {
@@ -61,7 +62,10 @@ class WalletList extends ConsumerWidget {
                 child: WalletCard(
                   wallet: wallet,
                   onTap: () {
-                    // Optional: filter dashboard/history by this wallet
+                    showDialog(
+                      context: context,
+                      builder: (context) => EditWalletDialog(wallet: wallet),
+                    );
                   },
                 ),
               );

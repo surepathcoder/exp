@@ -69,8 +69,11 @@ async def create_notification(
         return notification
     except Exception as e:
         logger.error(f"Error creating notification: {e}")
-        db.rollback()
-        raise e
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return None  # Notification failure is non-fatal
 
 
 async def check_and_trigger_balance_warning(db: Session, user_id: int, currency: str):

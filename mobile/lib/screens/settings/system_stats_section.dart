@@ -75,7 +75,7 @@ class _SystemStatsSectionState extends ConsumerState<SystemStatsSection> {
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                 ),
                 subtitle: Text(
-                  '${log.userEmail}  •  ${log.createdAt.substring(0, 16).replaceAll('T', ' ')}',
+                  '${log.userEmail}  •  ${DateFormat('yyyy-MM-dd HH:mm').format(log.createdAt)}',
                   style: const TextStyle(fontSize: 11),
                 ),
               ),

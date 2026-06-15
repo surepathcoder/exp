@@ -1,5 +1,6 @@
 .dart_tool/
 build/
+!build/web/
 .git/
 .github/
 .idea/

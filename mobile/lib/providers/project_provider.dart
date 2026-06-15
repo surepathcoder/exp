@@ -71,6 +71,46 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
       rethrow;
     }
   }
+
+  Future<bool> updateProject(int id, Project project) async {
+    state = state.copyWith(isLoading: true);
+    try {
+      final updated = await _apiService.updateProject(id, project);
+      final updatedList = state.projects.map((p) => p.id == id ? updated : p).toList();
+      final updatedActive = updatedList
+          .where((p) => p.status == ProjectStatus.active || p.status == ProjectStatus.upcoming)
+          .toList();
+
+      state = state.copyWith(
+        projects: updatedList,
+        activeProjects: updatedActive,
+        isLoading: false,
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(error: e.toString(), isLoading: false);
+      return false;
+    }
+  }
+
+  Future<bool> deleteProject(int id) async {
+    state = state.copyWith(isLoading: true);
+    try {
+      await _apiService.deleteProject(id);
+      final updatedList = state.projects.where((p) => p.id != id).toList();
+      final updatedActive = state.activeProjects.where((p) => p.id != id).toList();
+
+      state = state.copyWith(
+        projects: updatedList,
+        activeProjects: updatedActive,
+        isLoading: false,
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(error: e.toString(), isLoading: false);
+      return false;
+    }
+  }
 }
 
 final projectProvider = StateNotifierProvider<ProjectNotifier, ProjectState>((ref) {

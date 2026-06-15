@@ -7,6 +7,7 @@ import '../models/income.dart';
 import '../models/transfer.dart';
 import '../models/notification.dart';
 import '../models/project.dart';
+import '../models/audit_log.dart';
 import 'storage_service.dart';
 
 class ApiService {
@@ -326,6 +327,32 @@ class ApiService {
     }
   }
 
+  Future<Project> updateProject(int id, Project project) async {
+    try {
+      final response = await _dio.put('/projects/$id', data: project.toJson());
+      return Project.fromJson(response.data);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<void> deleteProject(int id) async {
+    try {
+      await _dio.delete('/projects/$id');
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getProjectSummary(int id) async {
+    try {
+      final response = await _dio.get('/projects/$id/summary');
+      return response.data;
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   Future<Map<String, dynamic>> getDashboardProjects() async {
     try {
       final response = await _dio.get('/dashboard/projects');
@@ -419,6 +446,19 @@ class ApiService {
   Future<void> deleteUser(int id) async {
     try {
       await _dio.delete('/users/$id');
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Audit Logs
+  Future<List<AuditLog>> getAuditLogs({int limit = 50, int offset = 0}) async {
+    try {
+      final response = await _dio.get(
+        '/settings/audit-logs',
+        queryParameters: {'limit': limit, 'offset': offset},
+      );
+      return (response.data as List).map((e) => AuditLog.fromJson(e)).toList();
     } catch (e) {
       throw _handleError(e);
     }

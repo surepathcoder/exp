@@ -91,6 +91,34 @@ class WalletNotifier extends StateNotifier<WalletState> {
       return false;
     }
   }
+
+  Future<bool> updateWallet(int id, {
+    String? name,
+    String? type,
+    String? icon,
+    String? color,
+    bool? isActive,
+  }) async {
+    state = state.copyWith(isLoading: true);
+    try {
+      final updated = await _apiService.updateWallet(
+        id,
+        name: name,
+        type: type,
+        icon: icon,
+        color: color,
+        isActive: isActive,
+      );
+      state = state.copyWith(
+        wallets: state.wallets.map((w) => w.id == id ? updated : w).toList(),
+        isLoading: false,
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return false;
+    }
+  }
 }
 
 final walletProvider = StateNotifierProvider<WalletNotifier, WalletState>((ref) {

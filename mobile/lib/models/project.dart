@@ -8,22 +8,7 @@ enum ProjectStatus {
   cancelled
 }
 
-extension ProjectStatusExtension on ProjectStatus {
-  String get name {
-    switch (this) {
-      case ProjectStatus.upcoming:
-        return 'upcoming';
-      case ProjectStatus.active:
-        return 'active';
-      case ProjectStatus.completed:
-        return 'completed';
-      case ProjectStatus.expired:
-        return 'expired';
-      case ProjectStatus.cancelled:
-        return 'cancelled';
-    }
-  }
-}
+
 
 ProjectStatus projectStatusFromString(String statusStr) {
   switch (statusStr.toLowerCase()) {

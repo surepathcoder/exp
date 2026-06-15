@@ -26,8 +26,8 @@ def upgrade() -> None:
     # 1. Create projectstatusenum and projects table only if projects doesn't exist
     if 'projects' not in tables:
         op.execute("DROP TYPE IF EXISTS projectstatusenum CASCADE")
-        project_status_enum = sa.Enum('upcoming', 'active', 'completed', 'expired', 'cancelled', name='projectstatusenum')
-        project_status_enum.create(bind, checkfirst=True)
+        op.execute("CREATE TYPE projectstatusenum AS ENUM ('upcoming', 'active', 'completed', 'expired', 'cancelled')")
+        project_status_enum = postgresql.ENUM('upcoming', 'active', 'completed', 'expired', 'cancelled', name='projectstatusenum', create_type=False)
 
         # Get currencyenum Type (already exists)
         currency_enum = postgresql.ENUM('USD', 'TZS', 'KES', name='currencyenum', create_type=False)
