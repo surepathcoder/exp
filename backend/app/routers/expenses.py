@@ -45,7 +45,11 @@ CATEGORIES = [
 ]
 
 @router.get("/categories", response_model=List[str])
-def get_categories():
+def get_categories(db: Session = Depends(get_db)):
+    from app.models import Category
+    cats = db.query(Category.name).filter(Category.is_active == True, Category.type == "expense").order_by(Category.sort_order.asc()).all()
+    if cats:
+        return [c[0] for c in cats]
     return CATEGORIES
 
 @router.post("/upload-receipt", response_model=dict)
@@ -269,7 +273,9 @@ async def create_expense(
                 detail=f"Cannot attach transactions to a project with status '{project.status.value}'"
             )
 
-    new_expense = Expense(**expense_in.model_dump(), user_id=current_user.id)
+    expense_data = expense_in.model_dump()
+    expense_data.pop("project", None)
+    new_expense = Expense(**expense_data, user_id=current_user.id)
     db.add(new_expense)
     db.commit()
     db.refresh(new_expense)
@@ -289,6 +295,23 @@ async def create_expense(
     await check_and_trigger_balance_warning(db, current_user.id, new_expense.currency.value)
     
     return new_expense
+
+
+@router.get("/{expense_id}", response_model=ExpenseResponse)
+def get_expense(
+    expense_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    expense = db.query(Expense).filter(Expense.id == expense_id).first()
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+        
+    if current_user.role == RoleEnum.user and expense.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this expense")
+        
+    return expense
+
 
 @router.put("/{expense_id}", response_model=ExpenseResponse)
 def update_expense(
@@ -320,7 +343,9 @@ def update_expense(
                 detail=f"Cannot attach transactions to a project with status '{project.status.value}'"
             )
 
-    expense_query.update(expense_in.model_dump(), synchronize_session=False)
+    expense_data = expense_in.model_dump()
+    expense_data.pop("project", None)
+    expense_query.update(expense_data, synchronize_session=False)
     db.commit()
     
     if expense_in.wallet_id:

@@ -83,7 +83,9 @@ async def create_transfer(
                 detail=f"Cannot attach transactions to a project with status '{project.status.value}'"
             )
 
-    new_transfer = Transfer(**transfer_in.model_dump(), user_id=current_user.id)
+    transfer_data = transfer_in.model_dump()
+    transfer_data.pop("project", None)
+    new_transfer = Transfer(**transfer_data, user_id=current_user.id)
     db.add(new_transfer)
     db.commit()
     db.refresh(new_transfer)
@@ -103,6 +105,23 @@ async def create_transfer(
     )
     
     return new_transfer
+
+
+@router.get("/{transfer_id}", response_model=TransferResponse)
+def get_transfer(
+    transfer_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    transfer = db.query(Transfer).filter(Transfer.id == transfer_id).first()
+    if not transfer:
+        raise HTTPException(status_code=404, detail="Transfer not found")
+        
+    if current_user.role == RoleEnum.user and transfer.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this transfer")
+        
+    return transfer
+
 
 @router.put("/{transfer_id}", response_model=TransferResponse)
 def update_transfer(
@@ -137,7 +156,9 @@ def update_transfer(
                 detail=f"Cannot attach transactions to a project with status '{project.status.value}'"
             )
 
-    transfer_query.update(transfer_in.model_dump(), synchronize_session=False)
+    transfer_data = transfer_in.model_dump()
+    transfer_data.pop("project", None)
+    transfer_query.update(transfer_data, synchronize_session=False)
     db.commit()
     
     # Sync new wallets

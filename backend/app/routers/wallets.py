@@ -78,6 +78,23 @@ def create_wallet(
     db.refresh(new_wallet)
     return new_wallet
 
+
+@router.get("/{wallet_id}", response_model=WalletResponse)
+def get_wallet(
+    wallet_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    wallet = db.query(Wallet).filter(Wallet.id == wallet_id).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+        
+    if current_user.role == RoleEnum.user and wallet.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this wallet")
+        
+    return wallet
+
+
 @router.put("/{wallet_id}", response_model=WalletResponse)
 def update_wallet(
     wallet_id: int,
@@ -128,3 +145,22 @@ def delete_wallet(
         # Hard-delete safe since no records exist
         db.delete(wallet)
         db.commit()
+
+
+@router.patch("/{wallet_id}/archive", response_model=WalletResponse)
+def archive_wallet(
+    wallet_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    wallet = db.query(Wallet).filter(Wallet.id == wallet_id).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+        
+    if current_user.role == RoleEnum.user and wallet.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this wallet")
+        
+    wallet.is_active = False
+    db.commit()
+    db.refresh(wallet)
+    return wallet

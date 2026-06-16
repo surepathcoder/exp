@@ -91,7 +91,9 @@ async def create_income(
                 detail=f"Cannot attach transactions to a project with status '{project.status.value}'"
             )
 
-    new_income = Income(**income_in.model_dump(), user_id=current_user.id)
+    income_data = income_in.model_dump()
+    income_data.pop("project", None)
+    new_income = Income(**income_data, user_id=current_user.id)
     db.add(new_income)
     db.commit()
     db.refresh(new_income)
@@ -109,6 +111,23 @@ async def create_income(
     )
     
     return new_income
+
+
+@router.get("/{income_id}", response_model=IncomeResponse)
+def get_income(
+    income_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    income = db.query(Income).filter(Income.id == income_id).first()
+    if not income:
+        raise HTTPException(status_code=404, detail="Income not found")
+        
+    if current_user.role == RoleEnum.user and income.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this income")
+        
+    return income
+
 
 @router.put("/{income_id}", response_model=IncomeResponse)
 def update_income(
@@ -140,7 +159,9 @@ def update_income(
                 detail=f"Cannot attach transactions to a project with status '{project.status.value}'"
             )
 
-    income_query.update(income_in.model_dump(), synchronize_session=False)
+    income_data = income_in.model_dump()
+    income_data.pop("project", None)
+    income_query.update(income_data, synchronize_session=False)
     db.commit()
     
     if income_in.wallet_id:
